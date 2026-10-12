@@ -1,0 +1,8 @@
+package com.cgengine.VertexDelete;
+import com.cgengine.model.*;
+import java.util.*;
+/** Creates a valid edited model without changing the source model. */
+public final class Eraser {
+ private Eraser(){}
+ public static Model vertexDelete(Model source,List<Integer> removed,boolean newFile,boolean removeNormals,boolean removeTextures,boolean removePolygons){ModelValidator.validate(source);if(removed==null)throw new IllegalArgumentException("Vertex selection is required");Set<Integer> deleted=new HashSet<>();for(Integer index:removed){if(index==null||index<0||index>=source.vertices.size())throw new IllegalArgumentException("Vertex index is out of range");if(!deleted.add(index))throw new IllegalArgumentException("Vertex indices must not contain duplicates");}Model result=new Model();result.setTexture(source.getTexture());Map<Integer,Integer> map=new HashMap<>();for(int old=0;old<source.vertices.size();old++)if(!deleted.contains(old)){map.put(old,result.vertices.size());result.vertices.add(source.vertices.get(old));}if(!removePolygons)for(Polygon face:source.polygons){if(face.getVertexIndices().stream().anyMatch(deleted::contains))continue;Polygon copy=face.clone();ArrayList<Integer> indices=new ArrayList<>(3);for(int old:face.getVertexIndices())indices.add(map.get(old));copy.setVertexIndices(indices);if(removeTextures)copy.setTextureVertexIndices(new ArrayList<>());result.polygons.add(copy);}if(!removeTextures)result.textureVertices=new ArrayList<>(source.textureVertices);if(removeNormals)for(Polygon face:result.polygons)face.setNormalIndices(new ArrayList<>());else result.computeNormals();ModelValidator.validate(result);return result;}
+}

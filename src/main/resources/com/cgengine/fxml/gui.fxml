@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.collections.FXCollections?>
+<?import javafx.scene.Cursor?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.input.KeyCodeCombination?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<AnchorPane fx:id="anchorPane" prefHeight="720.0" prefWidth="1280.0" xmlns="http://javafx.com/javafx/21.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.cgengine.GuiController">
+
+    <Canvas fx:id="canvas" height="720.0" layoutX="20.0" width="1280.0" AnchorPane.bottomAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+    <MenuBar layoutY="5.0" prefHeight="25.0" prefWidth="206.0">
+        <Menu mnemonicParsing="false" text="File">
+            <MenuItem mnemonicParsing="false" onAction="#onOpenModelMenuItemClick" text="Load Model">
+            </MenuItem>
+         <MenuItem mnemonicParsing="false" onAction="#onSaveModelMenuItemClick" text="Save Model">
+         </MenuItem>
+        </Menu>
+        <Menu mnemonicParsing="false" text="Controls">
+            <MenuItem mnemonicParsing="false" onAction="#onFrameSelectedMenuItemClick" text="Frame Selected" />
+            <MenuItem mnemonicParsing="false" onAction="#onResetCameraMenuItemClick" text="Reset Camera" />
+            <MenuItem fx:id="moveForwardMenuItem" mnemonicParsing="false" onAction="#handleCameraForward" text="Move Forward">
+                <accelerator><KeyCodeCombination alt="UP" code="W" control="UP" meta="UP" shift="UP" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="moveBackwardMenuItem" mnemonicParsing="false" onAction="#handleCameraBackward" text="Move Backward">
+                <accelerator><KeyCodeCombination alt="UP" code="S" control="UP" meta="UP" shift="UP" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="moveLeftMenuItem" mnemonicParsing="false" onAction="#moveCameraLeft" text="Move Left">
+                <accelerator><KeyCodeCombination alt="UP" code="A" control="UP" meta="UP" shift="UP" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="moveRightMenuItem" mnemonicParsing="false" onAction="#moveCameraRight" text="Move Right">
+                <accelerator><KeyCodeCombination alt="UP" code="D" control="UP" meta="UP" shift="UP" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="rotateLeftMenuItem" mnemonicParsing="false" onAction="#handleCameraLeft" text="Left">
+                <accelerator><KeyCodeCombination alt="UP" code="A" control="UP" meta="UP" shift="DOWN" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="rotateRightMenuItem" mnemonicParsing="false" onAction="#handleCameraRight" text="Right">
+                <accelerator><KeyCodeCombination alt="UP" code="D" control="UP" meta="UP" shift="DOWN" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="rotateUpMenuItem" mnemonicParsing="false" onAction="#handleCameraUp" text="Up">
+                <accelerator><KeyCodeCombination alt="UP" code="W" control="UP" meta="UP" shift="DOWN" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="rotateDownMenuItem" mnemonicParsing="false" onAction="#handleCameraDown" text="Down">
+                <accelerator><KeyCodeCombination alt="UP" code="S" control="UP" meta="UP" shift="DOWN" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="moveUpMenuItem" mnemonicParsing="false" onAction="#moveCameraUp" text="Move Up">
+                <accelerator><KeyCodeCombination alt="UP" code="W" control="DOWN" meta="UP" shift="UP" shortcut="UP" /></accelerator>
+            </MenuItem>
+            <MenuItem fx:id="moveDownMenuItem" mnemonicParsing="false" onAction="#moveCameraDown" text="Move Down">
+                <accelerator><KeyCodeCombination alt="UP" code="S" control="DOWN" meta="UP" shift="UP" shortcut="UP" /></accelerator>
+            </MenuItem>
+        </Menu>
+    </MenuBar>
+    <Label fx:id="cameraStatusLabel" layoutX="212.0" layoutY="8.0" />
+   <Pane layoutY="30.0" prefHeight="600.0" prefWidth="206.0">
+      <children>
+         <Accordion>
+            <panes>
+             <TitledPane animated="false" prefHeight="165.0" prefWidth="206.0" text="Vertex Remover">
+               <content>
+                 <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="167.0" prefWidth="204.0">
+                        <children>
+                           <Label layoutX="8.0" layoutY="6.0" text="Vertex indices (0, 2, 7)" />
+                           <TextField fx:id="VerticesToRemove" layoutX="4.0" layoutY="30.0" />
+                           <Button fx:id="vertexRemoverButton" layoutX="159.0" layoutY="30.0" mnemonicParsing="false" text="OK">
+                              <cursor>
+                                 <Cursor fx:constant="HAND" />
+                              </cursor>
+                           </Button>
+                           <Text layoutX="8.0" layoutY="73.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Create new model:" />
+                           <CheckBox fx:id="checkboxNewFile" layoutX="168.0" layoutY="60.0" mnemonicParsing="false">
+                              <cursor>
+                                 <Cursor fx:constant="HAND" />
+                              </cursor>
+                           </CheckBox>
+                           <Text layoutX="8.0" layoutY="90.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Remove normals:" />
+                           <CheckBox fx:id="checkboxRemoveNormals" layoutX="168.0" layoutY="77.0" mnemonicParsing="false">
+                              <cursor>
+                                 <Cursor fx:constant="HAND" />
+                              </cursor>
+                           </CheckBox>
+                           <Text layoutX="8.0" layoutY="107.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Remove Textures:" />
+                           <CheckBox fx:id="checkboxRemoveTextures" layoutX="168.0" layoutY="94.0" mnemonicParsing="false">
+                              <cursor>
+                                 <Cursor fx:constant="HAND" />
+                              </cursor>
+                           </CheckBox>
+                           <Text layoutX="8.0" layoutY="124.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Remove Polygons:" />
+                           <CheckBox fx:id="checkboxRemovePolygons" layoutX="168.0" layoutY="111.0" mnemonicParsing="false">
+                              <cursor>
+                                 <Cursor fx:constant="HAND" />
+                              </cursor>
+                           </CheckBox>
+                        </children>
+                     </AnchorPane>
+               </content>
+             </TitledPane>
+               <TitledPane animated="false" prefHeight="231.0" prefWidth="206.0" text="Transformation">
+                  <content>
+                     <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="167.0" prefWidth="204.0">
+                        <children>
+                           <Label layoutX="8.0" layoutY="6.0" text="Scale x y z (each &gt; 0)" />
+                           <TextField fx:id="inputForModelScaling" layoutX="4.0" layoutY="30.0" />
+                           <Label layoutX="8.0" layoutY="59.0" text="Input for model rotation (degrees)" />
+                           <TextField fx:id="inputForModelRotation" layoutX="4.0" layoutY="83.0" />
+                           <Label layoutX="8.0" layoutY="112.0" text="Input for model moving" />
+                           <TextField fx:id="inputForModelMoving" layoutX="4.0" layoutY="136.0" />
+                           <Button layoutX="109.0" layoutY="80.0" mnemonicParsing="false" onMouseClicked="#applyTransformation" prefHeight="32.0" prefWidth="131.0" rotate="90.0" text="Apply transform">
+                              <cursor>
+                                 <Cursor fx:constant="HAND" />
+                              </cursor>
+                              <font>
+                                 <Font size="15.0" />
+                              </font>
+                           </Button>
+                           <Button layoutX="8.0" layoutY="166.0" mnemonicParsing="false" onMouseClicked="#resetTransformation" prefHeight="30.0" prefWidth="143.0" text="Reset">
+                              <font>
+                                 <Font size="15.0" />
+                              </font>
+                           </Button>
+                        </children>
+                        <cursor>
+                           <Cursor fx:constant="DEFAULT" />
+                        </cursor>
+                     </AnchorPane>
+                  </content>
+               </TitledPane>
+               <TitledPane animated="false" prefHeight="235.0" prefWidth="206.0" text="Color / Texture / Polygons">
+                <content>
+                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="167.0" prefWidth="204.0">
+                        <children>
+                            <Label layoutX="8.0" layoutY="10.0" text="Select a color:" />
+                            <Label layoutX="8.0" layoutY="30.0" text="Polygon indices (0, 2, 7):" />
+                            <TextField fx:id="polygonIndices" layoutX="8.0" layoutY="48.0" prefWidth="118.0" />
+                            <Button layoutX="130.0" layoutY="48.0" mnemonicParsing="false" onAction="#selectAllPolygons" prefWidth="62.0" text="All" />
+                            <ComboBox fx:id="colorPicker" layoutX="8.0" layoutY="77.0" prefWidth="190.0">
+                                <items>
+                                    <FXCollections fx:factory="observableArrayList">
+                                        <String fx:value="Red" />
+                                        <String fx:value="Green" />
+                                        <String fx:value="Blue" />
+                                        <String fx:value="Yellow" />
+                                        <String fx:value="White" />
+                                        <String fx:value="Black" />
+                                    </FXCollections>
+                                </items>
+                            </ComboBox>
+                            <Button fx:id="applyColorButton" layoutX="8.0" layoutY="117.0" mnemonicParsing="false" onAction="#chooseColor" prefWidth="92" text="Apply" />
+                            <Button fx:id="resetColorButton" layoutX="98" layoutY="117.0" mnemonicParsing="false" onAction="#resetPolygonColor" prefWidth="94" text="Reset" />
+                            <Button layoutX="8.0" layoutY="175.0" onAction="#removePolygons" prefWidth="184" text="Delete selected polygons" />
+                            <Button layoutX="8.0" layoutY="143.0" mnemonicParsing="false" onAction="#chooseTexture" prefWidth="92" text="Texture" />
+                            <Button layoutX="108.0" layoutY="143.0" mnemonicParsing="false" onAction="#removeTexture" prefWidth="84" text="Clear texture" />
+                        </children>
+                    </AnchorPane>
+                </content>
+            </TitledPane>
+            </panes>
+         </Accordion>
+      </children>
+   </Pane>
+   <Pane layoutY="648.0" prefHeight="75.0" prefWidth="225.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0">
+      <children>
+         <TabPane prefHeight="75.0" prefWidth="226.0" tabClosingPolicy="UNAVAILABLE">
+           <tabs>
+             <Tab text="Cameras Tab">
+               <content>
+                 <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+                        <children>
+                           <ListView fx:id="listViewCameras" prefHeight="48.0" prefWidth="200.0" />
+                           <Button layoutX="202.0" layoutY="1.0" mnemonicParsing="false" onMouseClicked="#addCamera" prefHeight="2.0" prefWidth="9.0" text="+">
+                              <font>
+                                 <Font size="10.0" />
+                              </font>
+                           </Button>
+                           <Button layoutX="202.0" layoutY="23.0" mnemonicParsing="false" onMouseClicked="#removeCamera" prefHeight="19.0" prefWidth="21.0" text="-" textAlignment="CENTER">
+                              <font>
+                                 <Font size="10.0" />
+                              </font>
+                           </Button>
+                        </children>
+                     </AnchorPane>
+               </content>
+             </Tab>
+             <Tab text="Models Tab">
+               <content>
+                 <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+                        <children>
+                           <ListView fx:id="listViewModels" prefHeight="48.0" prefWidth="200.0" />
+                           <Button layoutX="202.0" layoutY="1.0" mnemonicParsing="false" onMouseClicked="#addModel" prefHeight="2.0" prefWidth="9.0" text="+">
+                              <font>
+                                 <Font size="10.0" />
+                              </font>
+                           </Button>
+                           <Button layoutX="202.0" layoutY="23.0" mnemonicParsing="false" onMouseClicked="#removeModel" prefHeight="19.0" prefWidth="21.0" text="-" textAlignment="CENTER">
+                              <font>
+                                 <Font size="10.0" />
+                              </font>
+                           </Button>
+                        </children>
+                     </AnchorPane>
+               </content>
+             </Tab>
+           </tabs>
+         </TabPane>
+      </children>
+   </Pane>
+</AnchorPane>

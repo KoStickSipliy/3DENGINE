@@ -1,0 +1,3 @@
+package com.cgengine;
+import com.cgengine.math.affine.Scaling; import com.cgengine.model.Model; import com.cgengine.obj_io.writer.*; import org.junit.jupiter.api.Test; import static org.junit.jupiter.api.Assertions.*;
+class UiBoundaryTest { @Test void invalidScaleIsRejectedBeforeMatrixCreation(){assertThrows(IllegalArgumentException.class,()->new Scaling(0,1,1));assertThrows(IllegalArgumentException.class,()->new Scaling(-1,1,1));assertThrows(IllegalArgumentException.class,()->new Scaling(Float.NaN,1,1));assertThrows(IllegalArgumentException.class,()->new Scaling(Float.POSITIVE_INFINITY,1,1));} @Test void writerReportsUnavailableOutputPath(){assertThrows(ObjWriteException.class,()->new ObjWriter().write(new Model(),"\0"));} }

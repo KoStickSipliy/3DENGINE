@@ -1,0 +1,2140 @@
+[33mcommit 1f43cd940cf4db62ac7f8669d8b541e039c1c774[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: KoStickSipliy <esipov.kostya.20005@gmail.com>
+Date:   Sat Sep 26 12:10:48 2026 +0300
+
+    rework v 1 done, no tests yet
+
+[1mdiff --git a/README.md b/README.md[m
+[1mindex b1b2343..2554282 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,30 +1,171 @@[m
+ # CGEngine[m
+ [m
+[31m-## Проверка проекта[m
+[32m+[m[32mУчебный Java 21 / JavaFX движок: локальная математика, OBJ I/O, CPU clipping,[m
+[32m+[m[32mрастеризация, общий depth buffer, цвета, текстура и Lambert lighting.[m
+ [m
+[31m-Для проверки требуются JDK 21 и Apache Maven 3.9 или новее. Активные[m
+[31m-JUnit-тесты расположены в `tests/` (это настроенный Maven test source[m
+[31m-directory); каталог `tests_DELETE/` является архивом и в проверках не[m
+[31m-участвует.[m
+[32m+[m[32m## Сборка и запуск[m
+[32m+[m
+[32m+[m[32mНужны **JDK 21**, **Apache Maven 3.9+** и графическая сессия Windows/Linux/macOS.[m
+[32m+[m[32m`java`, `javac`, `jar` и `mvn` должны быть в PATH (либо используйте полный путь).[m
+ [m
+ ```powershell[m
+[31m-mvn test[m
+[32m+[m[32mmvn clean test[m
+ mvn package[m
+[32m+[m[32mjava -jar target/cgengine.jar[m
+[32m+[m[32mpowershell -ExecutionPolicy Bypass -File scripts/verify-package.ps1[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m`target/cgengine.jar` — дистрибутив с JavaFX. Собирайте его на целевой ОС:[m
+[32m+[m[32mJavaFX содержит платформенные native-библиотеки. `cgengine-1.0-SNAPSHOT.jar`[m
+[32m+[m[32m— тонкий модульный JAR, без зависимостей. Для самостоятельного запуска[m
+[32m+[m[32mиспользуйте `cgengine.jar`. Предупреждение JavaFX об unnamed module при таком[m
+[32m+[m[32mclasspath-запуске ожидаемо. Скрипт `verify-package.ps1` проверяет отсутствие[m
+[32m+[m[32mзаменённых библиотек/JUnit, FXML, открытие окна, импорт OBJ, CPU pixels и Canvas.[m
+[32m+[m
+[32m+[m[32mДля проверки с новым кэшем:[m
+[32m+[m
+[32m+[m[32m```powershell[m
+[32m+[m[32mmvn -Dmaven.repo.local=AI_dev/verification-m2 clean test package[m
+[32m+[m[32mmvn dependency:tree[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mПервой сборке требуется сеть для Maven/JavaFX/JUnit; после загрузки зависимостей[m
+[32m+[m[32mдоступна сборка `mvn -o package`. Runtime-зависимости — только Java/JavaFX;[m
+[32m+[m[32mJUnit используется только в tests. Maven Wrapper не включён.[m
+[32m+[m
+[32m+[m[32m## Модели и поддерживаемый OBJ[m
+[32m+[m
+[32m+[m[32m**File → Load Model** (`Ctrl+F`) или `+` в **Models Tab** добавляет модель.[m
+[32m+[m[32mЩелчок по строке выбирает её, `-` удаляет выбранную. Пустая сцена допустима.[m
+[32m+[m[32m**File → Save Model** (`Ctrl+Shift+S`) сохраняет выбранную модель; результат[m
+[32m+[m[32mсообщается диалогом. Отмена file chooser ничего не меняет. Модель без вершин[m
+[32m+[m[32mостаётся допустимой пустой сценой, но не экспортируется: показывается ошибка,[m
+[32m+[m[32mсуществующий файл не перезаписывается.[m
+[32m+[m
+[32m+[m[32mПоддерживаются UTF-8 файлы, комментарии `#`, пустые строки и директивы:[m
+[32m+[m
+[32m+[m[32m- `v x y z`, `vt u v`, `vn x y z` с конечными числами;[m
+[32m+[m[32m- грани `f` из трёх и более вершин, формы `v`, `v/vt`, `v//vn`, `v/vt/vn`;[m
+[32m+[m[32m- положительные OBJ-индексы от **1**, с одинаковой формой всех углов одной грани.[m
+[32m+[m
+[32m+[m[32mВершины/UV/нормали должны быть объявлены до ссылающейся грани. Относительные[m
+[32m+[m[32mотрицательные индексы и неизвестные геометрические директивы отклоняются с[m
+[32m+[m[32mдиагностикой. Грани с четырьмя и более углами триангулируются при импорте;[m
+[32m+[m[32mвнутри движка и в сохранённом OBJ остаются только треугольники. Для вогнутых[m
+[32m+[m[32mпростых граней используется отсечение «ушей»; самопересекающиеся или[m
+[32m+[m[32mвырожденные грани отклоняются.[m
+[32m+[m[32m`o`, `g`, `s`, `mtllib` и `usemtl` принимаются как метаданные, но не меняют[m
+[32m+[m[32mгеометрию, цвета или материалы: MTL не загружается, texture назначается через UI.[m
+[32m+[m[32mНормали после загрузки пересчитываются, индексы нормалей обновляются.[m
+[32m+[m[32mНеверный файл не добавляется в сцену. Минимальный пример:[m
+[32m+[m
+[32m+[m[32mПроверены локальные архивные примеры: `3DModels_DELETE/CaracalCube/caracal_cube.obj`[m
+[32m+[m[32mдаёт 12 треугольников из 6 четырёхугольных граней;[m
+[32m+[m[32m`3DModels_DELETE/eo53jaydu328-Rigged_Hand/Rigged_Hand/Rigged_Hand_obj/Rigged Hand.obj`[m
+[32m+[m[32mдаёт 2072 треугольника из 1036 граней. `ArchiveObjTest` выполняет их загрузку[m
+[32m+[m[32mчерез FXML, рендер и повторный импорт после сохранения, если локальный архив[m
+[32m+[m[32mприсутствует; в чистой копии проекта эти два теста пропускаются.[m
+[32m+[m
+[32m+[m[32m```obj[m
+[32m+[m[32mv -10 -10 0[m
+[32m+[m[32mv 10 -10 0[m
+[32m+[m[32mv 0 10 0[m
+[32m+[m[32mf 1 2 3[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m## Камера[m
+[32m+[m
+[32m+[m[32mКамеры выбираются в **Cameras Tab**; `+` добавляет, `-` удаляет выбранную.[m
+[32m+[m[32mПоследнюю камеру удалить нельзя. Команды также доступны в меню **Controls**.[m
+[32m+[m[32mКогда текстовое поле не захватывает клавиатурный ввод:[m
+[32m+[m
+[32m+[m[32m| Клавиши | Действие |[m
+[32m+[m[32m| --- | --- |[m
+[32m+[m[32m| W / S | Приближение / отдаление |[m
+[32m+[m[32m| A / D | Перемещение target влево / вправо |[m
+[32m+[m[32m| Ctrl+W / Ctrl+S | Перемещение target вверх / вниз |[m
+[32m+[m[32m| Shift+A / Shift+D | Поворот вокруг target по горизонтали |[m
+[32m+[m[32m| Shift+W / Shift+S | Поворот вокруг target по вертикали |[m
+[32m+[m
+[32m+[m[32mПри приближении сохраняется положительная дистанция до target. Новая камера[m
+[32m+[m[32mсмотрит на начало координат с расстояния 100; для малой модели приблизьтесь.[m
+[32m+[m
+[32m+[m[32m## Преобразования[m
+[32m+[m
+[32m+[m[32mВ **Transformation** задайте по три числа `x y z` через пробел, с десятичной[m
+[32m+[m[32mточкой. Вращение — **градусы**, компоненты масштаба конечные и **строго > 0**.[m
+[32m+[m[32mКнопка **Apply transform** применяет очередное преобразование выбранной модели.[m
+[32m+[m[32mПорядок матрицы — `T × Rx × Ry × Rz × S` для векторов-столбцов.[m
+[32m+[m[32mПоля хранят последнее введённое приращение отдельно для каждой модели.[m
+[32m+[m[32mПовторный Apply применяет его ещё раз. **Reset** восстанавливает геометрию[m
+[32m+[m[32mдо первого Apply, не меняя другие модели. После удаления вершин результат[m
+[32m+[m[32mявляется новой редактируемой моделью с собственной базой для следующих Apply.[m
+[32m+[m[32mОшибочный ввод/переполнение не меняет геометрию. Сохраняются текущие координаты.[m
+[32m+[m
+[32m+[m[32m## Цвет, полигоны и текстура[m
+[32m+[m
+[32m+[m[32mВ **Color / Texture / Polygons** введите индексы полигонов **от 0**, например[m
+[32m+[m[32m`0, 2, 7`. Пробелы допустимы, повторы объединяются. **All** выбирает все.[m
+[32m+[m[32m**Apply** назначает Red, Green, Blue, Yellow, White или Black только выбранным[m
+[32m+[m[32mполигонам; **Reset** возвращает их к White. **Delete selected polygons**[m
+[32m+[m[32mудаляет только выбранные грани, сохраняя вершины/UV и остальные модели.[m
+[32m+[m[32mВыбор индексов очищается при смене модели и удалении полигонов.[m
+[32m+[m
+[32m+[m[32m**Texture** назначает выбранной модели одну PNG/JPG/JPEG, 1×1…4096×4096.[m
+[32m+[m[32mРазмер проверяется до декодирования bitmap. Нужны UV; за пределами [0,1][m
+[32m+[m[32mиспользуется clamp, начало OBJ V находится снизу изображения. Интерполяция[m
+[32m+[m[32mUV учитывает перспективу. **Clear texture** сохраняет UV и цвета.[m
+[32m+[m[32mПри отсутствии текстуры или UV отображается цвет полигона. Неудачная загрузка[m
+[32m+[m[32mсохраняет прежнюю текстуру. Альфа-канал игнорируется.[m
+[32m+[m
+[32m+[m[32mЦвета и texture — **только текущая сессия**, они не записываются в OBJ.[m
+[32m+[m[32mПосле повторной загрузки цвет White, texture отсутствует. MTL не поддерживается.[m
+[32m+[m[32mСвет всегда включён: один camera-space источник `(0,0,1)`, яркость[m
+[32m+[m[32m`0.15 + 0.85 × max(0, dot(N,L))`. Отсутствующая/нулевая нормаль даёт ambient 0.15.[m
+[32m+[m[32mЦвет или texture sample умножается на яркость; теней и управления светом нет.[m
+[32m+[m
+[32m+[m[32m## Удаление вершин[m
+[32m+[m
+[32m+[m[32m**Vertex Remover** принимает индексы от 0 через запятую. Пустой список,[m
+[32m+[m[32mдубли, отрицательные и несуществующие номера отклоняются. **OK** удаляет[m
+[32m+[m[32mвершины и затронутые треугольники. Остальные вершины сохраняются, индексы[m
+[32m+[m[32mперенумеровываются. **Create new model** добавляет результат в ту же позицию,[m
+[32m+[m[32mсохраняя исходную модель. Без флага результат заменяет текущую модель.[m
+[32m+[m[32mДополнительные флаги удаляют normals, UV (`Remove Textures`) или все полигоны[m
+[32m+[m[32mрезультата. Для удаления только bitmap используйте **Clear texture**.[m
+[32m+[m
+[32m+[m[32m## Проверки и производительность[m
+[32m+[m
+[32m+[m[32mАктивные JUnit-тесты находятся в `tests/`; архивы `tests_DELETE` и[m
+[32m+[m[32m`3DModels_DELETE` не нужны. Тесты JavaFX требуют доступного desktop/display,[m
+[32m+[m[32mкратковременно открывают окна и не взаимодействуют с чужими приложениями.[m
+[32m+[m
+[32m+[m[32m```powershell[m
+[32m+[m[32mmvn -Dtest=UiRegressionTest,EndToEndRegressionTest test[m
+[32m+[m[32mmvn -Dtest=ArchiveObjTest test[m
+[32m+[m[32mmvn -Dtest=RenderBenchmarkTest,FxRenderBenchmarkTest test[m
+ ```[m
+ [m
+[31m-## Проверка производительности[m
+[32m+[m[32mD-01: 10 000 небольших невырожденных треугольников, 1280×720, 150 кадров[m
+[32m+[m[32mпрогрева, 3×900 измеряемых кадров, затем 1 800-frame heap soak. Лимиты каждого[m
+[32m+[m[32mпрогона: mean ≤33.33 ms, p95 ≤50 ms, max <200 ms; heap growth ≤64 MiB.[m
+[32m+[m[32m`RenderBenchmarkTest` измеряет CPU-кадр; `FxRenderBenchmarkTest` — тот же[m
+[32m+[m[32mcontroller с texture и upload в Canvas, по десять поставленных в очередь[m
+[32m+[m[32mвыборов камеры в каждом прогоне. Время кадра не включает ожидание vsync.[m
+[32m+[m[32mОтчёт машины и матрица покрытия: `AI_dev/P17_VERIFICATION.md` (AI_dev локально[m
+[32m+[m[32mигнорируется Git). Результаты не экстраполируются на другое оборудование,[m
+[32m+[m[32mполноэкранный overdraw или произвольные крупные сцены.[m
+ [m
+[31m-`RenderMetrics` отделён от UI-цикла и используется benchmark runner/тестами для[m
+[31m-измерения кадров. Контрольный прогон D-01 выполняют на сцене из 10 000[m
+[31m-треугольников при 1280×720: 150 кадров прогрева, затем три прогона по 900[m
+[31m-кадров и memory soak 1 800 кадров. Для каждого прогона фиксируют ОС, CPU, RAM[m
+[31m-и JDK; пределы: mean ≤33,33 мс, p95 ≤50 мс, max <200 мс, прирост heap ≤64 MiB.[m
+[32m+[m[32m## Где изучать реализацию[m
+ [m
+[31m-## Текстуры и освещение[m
+[32m+[m[32m`math` — immutable векторы и row-major матрицы, умножаемые на векторы-столбцы;[m
+[32m+[m[32m`math/affine` — TRS; `obj_io` — parser/writer; `model` — данные и инварианты;[m
+[32m+[m[32m`render_engine/Clipper` — homogeneous clipping до деления на W;[m
+[32m+[m[32m`Rasterization` — barycentric pixels и общий depth buffer;[m
+[32m+[m[32m`TextureSampler`/`Light` — sampling и Lambert; `GuiController` — FXML и frame loop.[m
+[32m+[m[32mПри равной глубине остаётся первый fragment, нулевая screen area пропускается.[m
+ [m
+[31m-В панели **Choose Color** кнопка **Texture** назначает выбранной модели одну[m
+[31m-session-only текстуру PNG/JPG/JPEG размером от 1×1 до 4096×4096. UV вне[m
+[31m-диапазона clamp-ятся; если UV отсутствуют или текстуру нельзя прочитать,[m
+[31m-сохраняется базовый цвет полигона. Текстура не записывается в OBJ. К базовому[m
+[31m-цвету или texture sample применяется fixed camera-space Lambert light `(0,0,1)`[m
+[31m-с ambient 0,15.[m
+[32m+[m[32mОграничения: CPU renderer, треугольники, одна texture на модель, фиксированный[m
+[32m+[m[32mсвет. GPU API, PBR, тени, MTL, undo/redo, восстановление топологии и сохранение[m
+[32m+[m[32mвсей сцены не реализованы. Публичные списки Model требуют соблюдения инвариантов[m
+[32m+[m[32mпри программном редактировании; пользовательский ввод проверяется до изменения.[m
+[1mdiff --git a/pom.xml b/pom.xml[m
+[1mindex 5d368da..769d3ab 100644[m
+[1m--- a/pom.xml[m
+[1m+++ b/pom.xml[m
+[36m@@ -49,14 +49,9 @@[m
+                 <artifactId>maven-compiler-plugin</artifactId>[m
+                 <version>3.8.1</version>[m
+                 <configuration>[m
+[31m-                    <source>21</source>[m
+[31m-                    <target>21</target>[m
+[32m+[m[32m                    <release>21</release>[m
+                 </configuration>[m
+             </plugin>[m
+[31m-            <!--[m
+[31m-            for building jar using maven:[m
+[31m-            mvn clean -Dmaven.clean.failOnError=false compile assembly:single -DskipTests=true[m
+[31m-            -->[m
+             <plugin>[m
+                 <groupId>org.apache.maven.plugins</groupId>[m
+                 <artifactId>maven-jar-plugin</artifactId>[m
+[36m@@ -64,12 +59,8 @@[m
+                 <configuration>[m
+                     <archive>[m
+                         <manifest>[m
+[31m-                            <addClasspath>true</addClasspath>[m
+                             <mainClass>com.cgengine.Main</mainClass>[m
+                         </manifest>[m
+[31m-                        <manifestEntries>[m
+[31m-                            <Class-Path>.</Class-Path>[m
+[31m-                        </manifestEntries>[m
+                     </archive>[m
+                 </configuration>[m
+             </plugin>[m
+[1mdiff --git a/scripts/verify-package.ps1 b/scripts/verify-package.ps1[m
+[1mnew file mode 100644[m
+[1mindex 0000000..53a59aa[m
+[1m--- /dev/null[m
+[1m+++ b/scripts/verify-package.ps1[m
+[36m@@ -0,0 +1,29 @@[m
+[32m+[m[32m$ErrorActionPreference = 'Stop'[m
+[32m+[m[32mPush-Location (Join-Path $PSScriptRoot '..')[m
+[32m+[m[32mtry {[m
+[32m+[m[32m    $sources = @(Get-ChildItem src -Recurse -File) + @(Get-Item pom.xml)[m
+[32m+[m[32m    if ($sources | Select-String -Pattern 'io\.github\.(alphameo|shimeoki)|javax\.vecmath|<artifactId>(linear_algebra|jshaper|rasterization|vecmath)</artifactId>') {[m
+[32m+[m[32m        throw 'Source or module/build configuration references a replaced library'[m
+[32m+[m[32m    }[m
+[32m+[m[32m    $jarPath = (Resolve-Path 'target/cgengine.jar').Path[m
+[32m+[m[32m    $entries = & jar tf $jarPath[m
+[32m+[m[32m    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect distribution jar' }[m
+[32m+[m[32m    if ($entries -match 'io/github/(alphameo|shimeoki)/|javax/vecmath/|org/junit/') {[m
+[32m+[m[32m        throw 'Distribution contains a forbidden graphics or test dependency'[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (-not ($entries -contains 'com/cgengine/fxml/gui.fxml')) { throw 'FXML is missing' }[m
+[32m+[m[32m    New-Item -ItemType Directory -Force target/package-probe | Out-Null[m
+[32m+[m[32m    & javac -encoding UTF-8 -cp $jarPath -d target/package-probe tests/com/cgengine/PackagedSmoke.java[m
+[32m+[m[32m    if ($LASTEXITCODE -ne 0) { throw 'Smoke probe compilation failed' }[m
+[32m+[m[32m    & java -cp "$jarPath$([IO.Path]::PathSeparator)target/package-probe" com.cgengine.PackagedSmoke[m
+[32m+[m[32m    if ($LASTEXITCODE -ne 0) { throw 'Packaged application smoke failed' }[m
+[32m+[m[32m    foreach ($sample in @([m
+[32m+[m[32m        '3DModels_DELETE/CaracalCube/caracal_cube.obj',[m
+[32m+[m[32m        '3DModels_DELETE/eo53jaydu328-Rigged_Hand/Rigged_Hand/Rigged_Hand_obj/Rigged Hand.obj'[m
+[32m+[m[32m    )) {[m
+[32m+[m[32m        if (Test-Path -LiteralPath $sample) {[m
+[32m+[m[32m            & java -cp "$jarPath$([IO.Path]::PathSeparator)target/package-probe" com.cgengine.PackagedSmoke $sample[m
+[32m+[m[32m            if ($LASTEXITCODE -ne 0) { throw "Packaged sample smoke failed: $sample" }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m} finally { Pop-Location }[m
+[1mdiff --git a/src/main/java/com/cgengine/GuiController.java b/src/main/java/com/cgengine/GuiController.java[m
+[1mindex edeeaeb..b05da2c 100644[m
+[1m--- a/src/main/java/com/cgengine/GuiController.java[m
+[1m+++ b/src/main/java/com/cgengine/GuiController.java[m
+[36m@@ -3,11 +3,10 @@[m [mpackage com.cgengine;[m
+ import com.cgengine.math.affine.*;[m
+ import com.cgengine.math.Vector3f;[m
+ import com.cgengine.math.Vector2f;[m
+[31m-import com.cgengine.model.Polygon;[m
+ import com.cgengine.render_engine.RenderEngine;[m
+ import com.cgengine.render_engine.Rasterization.FrameBuffer;[m
+ import javafx.fxml.FXML;[m
+[31m-import javafx.geometry.Orientation;[m
+[32m+[m[32mimport java.util.Locale;[m
+ import javafx.animation.Animation;[m
+ import javafx.animation.KeyFrame;[m
+ import javafx.animation.Timeline;[m
+[36m@@ -17,11 +16,9 @@[m [mimport javafx.scene.canvas.Canvas;[m
+ import javafx.scene.control.*;[m
+ import javafx.scene.input.MouseEvent;[m
+ import javafx.scene.layout.AnchorPane;[m
+[31m-import javafx.stage.Stage;[m
+ import javafx.stage.FileChooser;[m
+ import javafx.util.Duration;[m
+ import java.nio.file.Files;[m
+[31m-import java.nio.file.Path;[m
+ import java.util.ArrayList;[m
+ import java.util.List;[m
+ import java.io.IOException;[m
+[36m@@ -46,8 +43,8 @@[m [mpublic class GuiController {[m
+     private Canvas canvas;[m
+ [m
+ [m
+[31m-    final private float ASPECT_RATIO = (float) Math.sqrt(2);[m
+[31m-    // final private float ASPECT_RATIO = 16.0F / 9.0F;[m
+[32m+[m[32m    final private float ASPECT_RATIO = 16.0F / 9.0F;[m
+[32m+[m
+ [m
+     private Camera camera = new Camera([m
+             new Vector2f((float) (Math.PI), (float) (-Math.PI / 2)),[m
+[36m@@ -58,9 +55,7 @@[m [mpublic class GuiController {[m
+     private Timeline timeline;[m
+     private FrameBuffer frameBuffer;[m
+ [m
+[31m-    private Vector3f currentTranslation = new Vector3f(0, 0, 0);[m
+[31m-    private Vector3f currentRotation = new Vector3f(0, 0, 0);[m
+[31m-    private Vector3f currentScale = new Vector3f(1, 1, 1);[m
+[32m+[m[32m    private final java.util.Map<Model, String[]> transformInputs = new java.util.IdentityHashMap<>();[m
+ [m
+     @FXML[m
+     private ListView<Model> listViewModels;[m
+[36m@@ -77,50 +72,15 @@[m [mpublic class GuiController {[m
+         canvas.setWidth(720 * ASPECT_RATIO);[m
+         canvas.setHeight(720);[m
+ [m
+[31m-        // 1.1[m
+[31m-        // anchorPane.prefWidthProperty().addListener((ov, oldValue, newValue) -> {[m
+[31m-        // canvas.setWidth(newValue.doubleValue() );[m
+[31m-        // canvas.setHeight(newValue.doubleValue() / ASPECT_RATIO);[m
+[31m-        // });[m
+[31m-[m
+[31m-        // 1.2[m
+         anchorPane.prefHeightProperty().addListener((ov, oldValue, newValue) -> {[m
+             canvas.setHeight(newValue.doubleValue());[m
+             canvas.setWidth(newValue.doubleValue() * ASPECT_RATIO);[m
+         });[m
+ [m
+[31m-        // 2[m
+[31m-        // anchorPane.prefWidthProperty().addListener((ov, oldValue, newValue) -> {[m
+[31m-        // double availableWidth = newValue.doubleValue();[m
+[31m-        // canvas.setWidth(availableWidth);[m
+[31m-        // canvas.setHeight((availableWidth) / ASPECT_RATIO);[m
+[31m-        // });[m
+[31m-[m
+[31m-        // 3[m
+[31m-        // anchorPane.prefWidthProperty().addListener((ov, oldValue, newValue) ->[m
+[31m-        // canvas.setWidth(newValue.doubleValue()));[m
+[31m-        // anchorPane.prefHeightProperty().addListener((ov, oldValue, newValue) ->[m
+[31m-        // canvas.setHeight(newValue.doubleValue()));[m
+[31m-[m
+         timeline = new Timeline();[m
+         timeline.setCycleCount(Animation.INDEFINITE);[m
+ [m
+[31m-        KeyFrame frame = new KeyFrame(Duration.millis(15), event -> {[m
+[31m-            double width = canvas.getWidth();[m
+[31m-            double height = canvas.getHeight();[m
+[31m-[m
+[31m-            int frameWidth = Math.max(1, (int) width);[m
+[31m-            int frameHeight = Math.max(1, (int) height);[m
+[31m-            camera.setAspectRatio((float) frameWidth / frameHeight);[m
+[31m-            if (frameBuffer == null || frameBuffer.width() != frameWidth || frameBuffer.height() != frameHeight) {[m
+[31m-                frameBuffer = new FrameBuffer(frameWidth, frameHeight);[m
+[31m-            }[m
+[31m-            RenderEngine.renderFrame(frameBuffer, camera, models);[m
+[31m-            com.cgengine.render_engine.PolygonFiller.publish(canvas.getGraphicsContext2D(), frameBuffer);[m
+[31m-[m
+[31m-        });[m
+[31m-[m
+[31m-        timeline.getKeyFrames().add(frame);[m
+[32m+[m[32m        timeline.getKeyFrames().add(new KeyFrame(Duration.millis(15), event -> renderFrame()));[m
+         timeline.play();[m
+ [m
+         vertexRemoverButton.setOnAction(event -> handleVertexRemoval());[m
+[36m@@ -142,6 +102,8 @@[m [mpublic class GuiController {[m
+             }[m
+         });[m
+ [m
+[32m+[m[32m        listViewCameras.getSelectionModel().select(camera);[m
+[32m+[m
+         listViewCameras.setCellFactory(param -> new ListCell<>() {[m
+             @Override[m
+             protected void updateItem(Camera item, boolean empty) {[m
+[36m@@ -161,91 +123,72 @@[m [mpublic class GuiController {[m
+                 if (empty || item == null) {[m
+                     setText(null);[m
+                 } else {[m
+[31m-                    setText("Model " + (models.indexOf(item) + 1));[m
+[32m+[m[32m                    setText("Model " + (modelIndex(item) + 1));[m
+                 }[m
+             }[m
+         });[m
+ [m
+[31m-        listViewModels.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {[m
+[31m-            if (newValue != null) {[m
+[31m-                currentModel = newValue;[m
+[31m-                updateTransformationFields();[m
+[31m-            }[m
+[32m+[m[32m        listViewModels.getSelectionModel().selectedIndexProperty().addListener((observable, oldValue, newValue) -> {[m
+[32m+[m[32m            int index = newValue.intValue();[m
+[32m+[m[32m            currentModel = index < 0 ? null : listViewModels.getItems().get(index);[m
+[32m+[m[32m            polygonIndices.clear();[m
+[32m+[m[32m            updateTransformationFields();[m
+         });[m
+     }[m
+ [m
+[31m-    private void updateTransformationFields() {[m
+[31m-        inputForModelMoving.setText(String.format("%.1f %.1f %.1f",[m
+[31m-                currentTranslation.x(), currentTranslation.y(), currentTranslation.z()));[m
+[32m+[m[32m    void renderFrame() {[m
+[32m+[m[32m        int width = Math.max(1, (int) canvas.getWidth());[m
+[32m+[m[32m        int height = Math.max(1, (int) canvas.getHeight());[m
+[32m+[m[32m        camera.setAspectRatio((float) width / height);[m
+[32m+[m[32m        if (frameBuffer == null || frameBuffer.width() != width || frameBuffer.height() != height)[m
+[32m+[m[32m            frameBuffer = new FrameBuffer(width, height);[m
+[32m+[m[32m        RenderEngine.renderFrame(frameBuffer, camera, models);[m
+[32m+[m[32m        com.cgengine.render_engine.PolygonFiller.publish(canvas.getGraphicsContext2D(), frameBuffer);[m
+[32m+[m[32m    }[m
+ [m
+[31m-        inputForModelRotation.setText(String.format("%.1f %.1f %.1f",[m
+[31m-                currentRotation.x(), currentRotation.y(), currentRotation.z()));[m
+[32m+[m[32m    void dispose() { timeline.stop(); }[m
+ [m
+[31m-        inputForModelScaling.setText(String.format("%.1f %.1f %.1f",[m
+[31m-                currentScale.x(), currentScale.y(), currentScale.z()));[m
+[32m+[m[32m    private void updateTransformationFields() {[m
+[32m+[m[32m        String[] values = transformInputs.get(currentModel);[m
+[32m+[m[32m        inputForModelMoving.setText(values == null ? "0.0 0.0 0.0" : values[0]);[m
+[32m+[m[32m        inputForModelRotation.setText(values == null ? "0.0 0.0 0.0" : values[1]);[m
+[32m+[m[32m        inputForModelScaling.setText(values == null ? "1.0 1.0 1.0" : values[2]);[m
+     }[m
+ [m
+[32m+[m[32m    File chooseModelFile(boolean save) {[m
+[32m+[m[32m        FileChooser chooser = new FileChooser();[m
+[32m+[m[32m        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Model (*.obj)", "*.obj"));[m
+[32m+[m[32m        chooser.setTitle(save ? "Save Model" : "Load Model");[m
+[32m+[m[32m        return save ? chooser.showSaveDialog(canvas.getScene().getWindow())[m
+[32m+[m[32m                : chooser.showOpenDialog(canvas.getScene().getWindow());[m
+[32m+[m[32m    }[m
+ [m
+[31m-    private boolean firstModelLoaded = false;[m
+     @FXML[m
+     private void onOpenModelMenuItemClick() {[m
+[31m-        FileChooser fileChooser = new FileChooser();[m
+[31m-        fileChooser.getExtensionFilters().add([m
+[31m-                new FileChooser.ExtensionFilter("Model (*.obj)", "*.obj"));[m
+[31m-        fileChooser.setTitle("Load Model");[m
+[31m-[m
+[31m-        File file = fileChooser.showOpenDialog((Stage) canvas.getScene().getWindow());[m
+[31m-        if (file == null) {[m
+[31m-            return;[m
+[31m-        }[m
+[31m-[m
+[31m-        Path fileName = Path.of(file.getAbsolutePath());[m
+[31m-[m
+[32m+[m[32m        File file = chooseModelFile(false);[m
+[32m+[m[32m        if (file == null) return;[m
+         try {[m
+[31m-            String fileContent = Files.readString(fileName);[m
+[31m-            Model newModel = ObjReader.read(fileContent);[m
+[31m-[m
+[31m-            models.add(newModel);[m
+[32m+[m[32m            Model model = ObjReader.read(Files.readString(file.toPath()));[m
+[32m+[m[32m            models.add(model);[m
+             listViewModels.setItems(FXCollections.observableArrayList(models));[m
+[31m-            listViewModels.getSelectionModel().select(newModel);[m
+[31m-[m
+[31m-            if (!firstModelLoaded) {[m
+[31m-                camera.moveDistance(5 * TRANSLATION);[m
+[31m-                firstModelLoaded = true;[m
+[31m-            }[m
+[31m-[m
+[31m-            // currentModel = newModel;[m
+[31m-            // mesh = newModel;[m
+[32m+[m[32m            listViewModels.getSelectionModel().select(models.size() - 1);[m
+         } catch (IOException e) {[m
+             showError("File Error", "Failed to read file: " + e.getMessage());[m
+[31m-        } catch (ObjReaderException e) {[m
+[31m-            showError("Model Error", "Invalid model format: " + e.getMessage());[m
+[31m-        } catch (Exception e) {[m
+[31m-            showError("Error", "An unexpected error occurred: " + e.getMessage());[m
+[32m+[m[32m        } catch (ObjReaderException | IllegalArgumentException e) {[m
+[32m+[m[32m            showError("Model Error", e.getMessage());[m
+         }[m
+     }[m
+ [m
+     @FXML[m
+     private void onSaveModelMenuItemClick() {[m
+[31m-        FileChooser fileChooser = new FileChooser();[m
+[31m-        fileChooser.getExtensionFilters().add([m
+[31m-                new FileChooser.ExtensionFilter("Model (*.obj)", "*.obj"));[m
+[31m-        fileChooser.setTitle("Save Model");[m
+[31m-[m
+[31m-        File file = fileChooser.showSaveDialog((Stage) canvas.getScene().getWindow());[m
+[31m-        if (file == null) {[m
+[31m-            return;[m
+[31m-        }[m
+[31m-[m
+[31m-        if (currentModel == null) {[m
+[31m-            showError("Save Error", "No model loaded to save");[m
+[31m-            return;[m
+[31m-        }[m
+[32m+[m[32m        if (currentModel == null) { showError("Save Error", "No model loaded to save"); return; }[m
+[32m+[m[32m        File file = chooseModelFile(true);[m
+[32m+[m[32m        if (file == null) return;[m
+         try {[m
+[31m-            ObjWriter writer = new ObjWriter();[m
+[31m-            writer.write(currentModel, file.getAbsolutePath());[m
+[31m-        } catch (Exception e) {[m
+[31m-            showError("Save Error", "Error saving file: " + e.getMessage());[m
+[32m+[m[32m            new ObjWriter().write(currentModel, file.getAbsolutePath());[m
+[32m+[m[32m            showInfo("Model saved", "OBJ was saved successfully.");[m
+[32m+[m[32m        } catch (com.cgengine.obj_io.writer.ObjWriteException | IllegalArgumentException e) {[m
+[32m+[m[32m            showError("Save Error", e.getMessage());[m
+         }[m
+     }[m
+ [m
+[36m@@ -258,114 +201,46 @@[m [mpublic class GuiController {[m
+     @FXML[m
+     private TextField inputForModelScaling;[m
+ [m
+[31m-    private Vector3f accumulatedTranslation = new Vector3f(0, 0, 0);[m
+[31m-    private Vector3f accumulatedRotation = new Vector3f(0, 0, 0);[m
+[31m-    private Vector3f accumulatedScale = new Vector3f(1, 1, 1);[m
+ [m
+     @FXML[m
+     void applyTransformation(MouseEvent event) {[m
+[31m-        if (currentModel == null)[m
+[31m-            return;[m
+[31m-[m
+[32m+[m[32m        if (currentModel == null) { showError("Input Error", "Select a model first."); return; }[m
+         try {[m
+[31m-            String[] translateValues = inputForModelMoving.getText().split("\\s+");[m
+[31m-            String[] rotateValues = inputForModelRotation.getText().split("\\s+");[m
+[31m-            String[] scaleValues = inputForModelScaling.getText().split("\\s+");[m
+[31m-[m
+[31m-            Vector3f translation = new Vector3f([m
+[31m-                    Float.parseFloat(translateValues[0]),[m
+[31m-                    Float.parseFloat(translateValues[1]),[m
+[31m-                    Float.parseFloat(translateValues[2]));[m
+[31m-[m
+[31m-            Vector3f rotation = new Vector3f([m
+[31m-                    Float.parseFloat(rotateValues[0]),[m
+[31m-                    Float.parseFloat(rotateValues[1]),[m
+[31m-                    Float.parseFloat(rotateValues[2]));[m
+[31m-[m
+[31m-            Vector3f scale = new Vector3f([m
+[31m-                    Float.parseFloat(scaleValues[0]),[m
+[31m-                    Float.parseFloat(scaleValues[1]),[m
+[31m-                    Float.parseFloat(scaleValues[2]));[m
+[31m-[m
+[32m+[m[32m            Vector3f translation = parseVector(inputForModelMoving.getText());[m
+[32m+[m[32m            Vector3f rotation = parseVector(inputForModelRotation.getText());[m
+[32m+[m[32m            Vector3f scale = parseVector(inputForModelScaling.getText());[m
+             Transformation transformation = new Transformation([m
+                     new Translator(translation.x(), translation.y(), translation.z()),[m
+[31m-                    new Rotator(rotation.x(), Rotator.Axis.X),[m
+[31m-                    new Rotator(rotation.y(), Rotator.Axis.Y),[m
+[31m-                    new Rotator(rotation.z(), Rotator.Axis.Z),[m
+[32m+[m[32m                    Rotator.degrees(rotation.x(), Rotator.Axis.X),[m
+[32m+[m[32m                    Rotator.degrees(rotation.y(), Rotator.Axis.Y),[m
+[32m+[m[32m                    Rotator.degrees(rotation.z(), Rotator.Axis.Z),[m
+                     new Scaling(scale.x(), scale.y(), scale.z()));[m
+[32m+[m[32m            currentModel.applyTransformation(transformation);[m
+[32m+[m[32m            transformInputs.put(currentModel, new String[]{inputForModelMoving.getText(),[m
+[32m+[m[32m                    inputForModelRotation.getText(), inputForModelScaling.getText()});[m
+[32m+[m[32m        } catch (IllegalArgumentException e) { showError("Transformation Error", e.getMessage()); }[m
+[32m+[m[32m    }[m
+ [m
+[31m-            currentModel.vertices = transformVertices(transformation, currentModel.vertices);[m
+[31m-[m
+[31m-            accumulatedTranslation = new Vector3f([m
+[31m-                    accumulatedTranslation.x() + translation.x(),[m
+[31m-                    accumulatedTranslation.y() + translation.y(),[m
+[31m-                    accumulatedTranslation.z() + translation.z());[m
+[31m-[m
+[31m-            accumulatedRotation = new Vector3f([m
+[31m-                    accumulatedRotation.x() + rotation.x(),[m
+[31m-                    accumulatedRotation.y() + rotation.y(),[m
+[31m-                    accumulatedRotation.z() + rotation.z());[m
+[31m-[m
+[31m-            accumulatedScale = new Vector3f([m
+[31m-                    accumulatedScale.x() * scale.x(),[m
+[31m-                    accumulatedScale.y() * scale.y(),[m
+[31m-                    accumulatedScale.z() * scale.z());[m
+[31m-[m
+[31m-            currentTranslation = translation;[m
+[31m-            currentRotation = rotation;[m
+[31m-            currentScale = scale;[m
+[31m-[m
+[31m-        } catch (NumberFormatException e) {[m
+[31m-            Alert alert = new Alert(Alert.AlertType.ERROR);[m
+[31m-            alert.setTitle("Input Error");[m
+[31m-            alert.setHeaderText("Invalid transformation values");[m
+[31m-            alert.setContentText("Please enter valid numbers in format: x y z");[m
+[31m-            alert.showAndWait();[m
+[31m-        } catch (Exception e) {[m
+[31m-            Alert alert = new Alert(Alert.AlertType.ERROR);[m
+[31m-            alert.setTitle("Transformation Error");[m
+[31m-            alert.setHeaderText("Error applying transformation");[m
+[31m-            alert.setContentText(e.getMessage());[m
+[31m-            alert.showAndWait();[m
+[31m-        }[m
+[32m+[m[32m    static Vector3f parseVector(String text) {[m
+[32m+[m[32m        String[] parts = text.trim().split("\\s+");[m
+[32m+[m[32m        if (parts.length != 3) throw new IllegalArgumentException("Enter exactly three finite numbers: x y z (decimal point).");[m
+[32m+[m[32m        Vector3f value = new Vector3f(Float.parseFloat(parts[0]), Float.parseFloat(parts[1]), Float.parseFloat(parts[2]));[m
+[32m+[m[32m        if (!com.cgengine.math.VectorMath.isFinite(value)) throw new IllegalArgumentException("All components must be finite.");[m
+[32m+[m[32m        return value;[m
+     }[m
+ [m
+     @FXML[m
+     void resetTransformation(MouseEvent event) {[m
+[31m-        if (currentModel == null)[m
+[31m-            return;[m
+[31m-[m
+[31m-        Transformation resetTransformation = new Transformation([m
+[31m-                new Scaling(1 / accumulatedScale.x(), 1 / accumulatedScale.y(), 1 / accumulatedScale.z()),[m
+[31m-                new Rotator(-accumulatedRotation.z(), Rotator.Axis.Z),[m
+[31m-                new Rotator(-accumulatedRotation.y(), Rotator.Axis.Y),[m
+[31m-                new Rotator(-accumulatedRotation.x(), Rotator.Axis.X),[m
+[31m-                new Translator(-accumulatedTranslation.x(), -accumulatedTranslation.y(), -accumulatedTranslation.z()));[m
+[31m-        currentModel.vertices = transformVertices(resetTransformation, currentModel.vertices);[m
+[31m-[m
+[31m-        currentTranslation = new Vector3f(0, 0, 0);[m
+[31m-        currentRotation = new Vector3f(0, 0, 0);[m
+[31m-        currentScale = new Vector3f(1, 1, 1);[m
+[31m-        accumulatedTranslation = new Vector3f(0, 0, 0);[m
+[31m-        accumulatedRotation = new Vector3f(0, 0, 0);[m
+[31m-        accumulatedScale = new Vector3f(1, 1, 1);[m
+[31m-[m
+[31m-        inputForModelMoving.setText("0.0 0.0 0.0");[m
+[31m-        inputForModelRotation.setText("0.0 0.0 0.0");[m
+[31m-        inputForModelScaling.setText("1.0 1.0 1.0");[m
+[31m-    }[m
+[31m-[m
+[31m-    private ArrayList<Vector3f> transformVertices(final Transformation transformation, final List<Vector3f> vertices) {[m
+[31m-        final ArrayList<Vector3f> transformed = new ArrayList<>(vertices.size());[m
+[31m-        for (final Vector3f vertex : vertices) {[m
+[31m-            transformed.add(transformation.transform(vertex));[m
+[31m-        }[m
+[31m-        return transformed;[m
+[32m+[m[32m        if (currentModel == null) { showError("Input Error", "Select a model first."); return; }[m
+[32m+[m[32m        currentModel.resetTransformation();[m
+[32m+[m[32m        transformInputs.remove(currentModel);[m
+[32m+[m[32m        updateTransformationFields();[m
+     }[m
+ [m
+     @FXML[m
+     public void handleCameraForward(ActionEvent actionEvent) {[m
+[31m-        camera.moveDistance(-TRANSLATION);[m
+[32m+[m[32m        float distance = com.cgengine.math.VectorMath.length(com.cgengine.math.VectorMath.subtract(camera.getPosition(), camera.getTarget()));[m
+[32m+[m[32m        camera.moveDistance(-Math.min(TRANSLATION, Math.max(0, distance - 0.01f)));[m
+     }[m
+ [m
+     @FXML[m
+[36m@@ -425,72 +300,12 @@[m [mpublic class GuiController {[m
+     private CheckBox checkboxRemoveTextures;[m
+     @FXML[m
+     private CheckBox checkboxRemovePolygons;[m
+[31m-    @FXML[m
+[31m-    private Button colorPolygonButton;[m
+ [m
+     @FXML[m
+     private ComboBox<String> colorPicker;[m
+     @FXML[m
+     private TextField polygonIndices;[m
+ [m
+[31m-    // @FXML[m
+[31m-    // private void handleColorPolygon(ActionEvent actionEvent) {[m
+[31m-    //[m
+[31m-    // if (mesh == null) {[m
+[31m-    // showError("No model loaded", "Please load a model first before applying[m
+[31m-    // colors.");[m
+[31m-    // return;[m
+[31m-    // }[m
+[31m-    //[m
+[31m-    // String selectedColor = colorPicker.getValue();[m
+[31m-    // if (selectedColor == null) {[m
+[31m-    // showError("No color selected", "Please select a color to apply.");[m
+[31m-    // return;[m
+[31m-    // }[m
+[31m-    //[m
+[31m-    // switch (selectedColor.toLowerCase()) {[m
+[31m-    // case "red":[m
+[31m-    // color = new Colorf(1.0f, 0.0f, 0.0f, 1.0F);[m
+[31m-    // break;[m
+[31m-    // case "green":[m
+[31m-    // color = new Colorf(0.0f, 1.0f, 0.0f, 1.0F);[m
+[31m-    // break;[m
+[31m-    // case "blue":[m
+[31m-    // color = new Colorf(0.0f, 0.0f, 1.0f, 1.0F);[m
+[31m-    // break;[m
+[31m-    // case "yellow":[m
+[31m-    // color = new Colorf(1.0f, 1.0f, 0.0f, 1.0F);[m
+[31m-    // break;[m
+[31m-    // case "white":[m
+[31m-    // color = new Colorf(1.0f, 1.0f, 1.0f, 1.0F);[m
+[31m-    // break;[m
+[31m-    // default:[m
+[31m-    // color = new Colorf(0.0f, 0.0f, 0.0f, 1.0F); // Черный цвет по умолчанию[m
+[31m-    // break;[m
+[31m-    // }[m
+[31m-    //[m
+[31m-    // timeline = new Timeline();[m
+[31m-    // timeline.setCycleCount(Animation.INDEFINITE);[m
+[31m-    //[m
+[31m-    // KeyFrame frame = new KeyFrame(Duration.millis(15), event -> {[m
+[31m-    // double width = canvas.getWidth();[m
+[31m-    // double height = canvas.getHeight();[m
+[31m-    //[m
+[31m-    // canvas.getGraphicsContext2D().clearRect(0, 0, width, height);[m
+[31m-    // camera.setAspectRatio((float) (width / height));[m
+[31m-    //[m
+[31m-    // if (mesh != null) {[m
+[31m-    // PolygonFiller.fillPolygon(canvas.getGraphicsContext2D(), camera, mesh, (int)[m
+[31m-    // width, (int) height, color);[m
+[31m-    // }[m
+[31m-    // });[m
+[31m-    //[m
+[31m-    // timeline.getKeyFrames().add(frame);[m
+[31m-    // timeline.play();[m
+[31m-    //[m
+[31m-    // vertexRemoverButton.setOnAction(event -> handleVertexRemoval());[m
+[31m-    // }[m
+[31m-[m
+     public void chooseColor(ActionEvent actionEvent) {[m
+         if (currentModel == null) { showError("No model selected", "Select a model before applying a color."); return; }[m
+         String selectedColor = colorPicker.getValue();[m
+[36m@@ -499,7 +314,7 @@[m [mpublic class GuiController {[m
+             return;[m
+         }[m
+ [m
+[31m-        switch (selectedColor.toLowerCase()) {[m
+[32m+[m[32m        switch (selectedColor.toLowerCase(Locale.ROOT)) {[m
+             case "red": applyPolygonColor(com.cgengine.render_engine.ColorRgb.RED); break;[m
+             case "green": applyPolygonColor(com.cgengine.render_engine.ColorRgb.GREEN); break;[m
+             case "blue": applyPolygonColor(com.cgengine.render_engine.ColorRgb.BLUE); break;[m
+[36m@@ -518,19 +333,62 @@[m [mpublic class GuiController {[m
+         if (currentModel == null) { showError("No model selected", "Select a model before applying a texture."); return; }[m
+         boolean hasUv = currentModel.polygons.stream().anyMatch(p -> p.getTextureVertexIndices().size() == 3);[m
+         if (!hasUv) { showError("Texture Error", "The selected model has no UV coordinates; its base color will be used."); return; }[m
+[31m-        FileChooser chooser = new FileChooser(); chooser.setTitle("Load Texture");[m
+[31m-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images (*.png, *.jpg, *.jpeg)", "*.png", "*.jpg", "*.jpeg"));[m
+[31m-        File file = chooser.showOpenDialog((Stage) canvas.getScene().getWindow());[m
+[32m+[m[32m        File file = chooseTextureFile();[m
+         if (file == null) return;[m
+         try { currentModel.setTexture(Texture2D.load(file)); }[m
+[31m-        catch (IOException e) { showError("Texture Error", e.getMessage()); }[m
+[32m+[m[32m        catch (IOException | IllegalArgumentException e) { showError("Texture Error", e.getMessage()); }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    File chooseTextureFile() {[m
+[32m+[m[32m        FileChooser chooser = new FileChooser();[m
+[32m+[m[32m        chooser.setTitle("Load Texture");[m
+[32m+[m[32m        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images (*.png, *.jpg, *.jpeg)", "*.png", "*.jpg", "*.jpeg"));[m
+[32m+[m[32m        return chooser.showOpenDialog(canvas.getScene().getWindow());[m
+     }[m
+ [m
+     @FXML[m
+[31m-    private void removeTexture(ActionEvent actionEvent) { if (currentModel != null) currentModel.removeTexture(); }[m
+[31m-    @FXML public void selectAllPolygons(ActionEvent actionEvent) { if (currentModel != null) { StringBuilder value=new StringBuilder(); for(int i=0;i<currentModel.polygons.size();i++){if(i>0)value.append(", ");value.append(i);} polygonIndices.setText(value.toString()); } }[m
+[31m-    private void applyPolygonColor(com.cgengine.render_engine.ColorRgb color) { try { List<Integer> indices=parsePolygonIndices(); for(int index:indices)currentModel.polygons.get(index).setBaseColor(color); } catch(IllegalArgumentException e){showError("Invalid polygon selection",e.getMessage());} }[m
+[31m-    private List<Integer> parsePolygonIndices(){if(polygonIndices==null||polygonIndices.getText().isBlank())throw new IllegalArgumentException("Enter zero-based polygon indices."); java.util.LinkedHashSet<Integer> result=new java.util.LinkedHashSet<>();for(String part:polygonIndices.getText().split(",")){int index;try{index=Integer.parseInt(part.trim());}catch(NumberFormatException e){throw new IllegalArgumentException("Indices must be comma-separated non-negative integers.");}if(index<0||index>=currentModel.polygons.size())throw new IllegalArgumentException("Polygon index is out of range.");result.add(index);}return new ArrayList<>(result);}[m
+[32m+[m[32m    private void removeTexture(ActionEvent event) {[m
+[32m+[m[32m        if (currentModel == null) { showError("No model selected", "Select a model first."); return; }[m
+[32m+[m[32m        currentModel.removeTexture();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @FXML[m
+[32m+[m[32m    public void selectAllPolygons(ActionEvent event) {[m
+[32m+[m[32m        if (currentModel == null) { showError("No model selected", "Select a model first."); return; }[m
+[32m+[m[32m        polygonIndices.setText(java.util.stream.IntStream.range(0, currentModel.polygons.size())[m
+[32m+[m[32m                .mapToObj(Integer::toString).collect(java.util.stream.Collectors.joining(", ")));[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @FXML[m
+[32m+[m[32m    void removePolygons(ActionEvent event) {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m            List<Integer> indices = parsePolygonIndices();[m
+[32m+[m[32m            indices.sort(java.util.Comparator.reverseOrder());[m
+[32m+[m[32m            for (int index : indices) currentModel.polygons.remove(index);[m
+[32m+[m[32m            polygonIndices.clear();[m
+[32m+[m[32m        } catch (IllegalArgumentException e) { showError("Invalid polygon selection", e.getMessage()); }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private void applyPolygonColor(com.cgengine.render_engine.ColorRgb color) {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m            List<Integer> indices = parsePolygonIndices();[m
+[32m+[m[32m            for (int index : indices) currentModel.polygons.get(index).setBaseColor(color);[m
+[32m+[m[32m        } catch (IllegalArgumentException e) { showError("Invalid polygon selection", e.getMessage()); }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private List<Integer> parsePolygonIndices() {[m
+[32m+[m[32m        if (currentModel == null) throw new IllegalArgumentException("Select a model first.");[m
+[32m+[m[32m        if (polygonIndices.getText().isBlank()) throw new IllegalArgumentException("Enter zero-based polygon indices.");[m
+[32m+[m[32m        java.util.LinkedHashSet<Integer> result = new java.util.LinkedHashSet<>();[m
+[32m+[m[32m        for (String part : polygonIndices.getText().split(",", -1)) {[m
+[32m+[m[32m            int index;[m
+[32m+[m[32m            try { index = Integer.parseInt(part.trim()); }[m
+[32m+[m[32m            catch (NumberFormatException e) { throw new IllegalArgumentException("Indices must be comma-separated non-negative integers."); }[m
+[32m+[m[32m            if (index < 0 || index >= currentModel.polygons.size()) throw new IllegalArgumentException("Polygon index is out of range.");[m
+[32m+[m[32m            result.add(index);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        return new ArrayList<>(result);[m
+[32m+[m[32m    }[m
+ [m
+     private void handleVertexRemoval() {[m
+         if (currentModel == null) {[m
+[36m@@ -547,9 +405,9 @@[m [mpublic class GuiController {[m
+             }[m
+ [m
+             boolean createNewModel = checkboxNewFile.isSelected();[m
+[31m-            boolean removeNormals = !checkboxRemoveNormals.isSelected();[m
+[31m-            boolean removeTextures = !checkboxRemoveTextures.isSelected();[m
+[31m-            boolean removePolygons = !checkboxRemovePolygons.isSelected();[m
+[32m+[m[32m            boolean removeNormals = checkboxRemoveNormals.isSelected();[m
+[32m+[m[32m            boolean removeTextures = checkboxRemoveTextures.isSelected();[m
+[32m+[m[32m            boolean removePolygons = checkboxRemovePolygons.isSelected();[m
+ [m
+             Model resultModel = Eraser.vertexDelete([m
+                     currentModel,[m
+[36m@@ -561,26 +419,12 @@[m [mpublic class GuiController {[m
+ [m
+             if (createNewModel) {[m
+ [m
+[31m-                float maxX = Float.NEGATIVE_INFINITY;[m
+[31m-                for (Vector3f vertex : currentModel.vertices) {[m
+[31m-                    if (vertex.x() > maxX) {[m
+[31m-                        maxX = vertex.x();[m
+[31m-                    }[m
+[31m-                }[m
+[31m-                [m
+[31m-                float offset = -maxX - 3.0F;[m
+[31m-                for (Vector3f vertex : resultModel.vertices) {[m
+[31m-                    resultModel.vertices.set([m
+[31m-                        resultModel.vertices.indexOf(vertex),[m
+[31m-                        new Vector3f(vertex.x() + offset, vertex.y(), vertex.z())[m
+[31m-                    );[m
+[31m-                }[m
+[31m-[m
+                 models.add(resultModel);[m
+                 listViewModels.setItems(FXCollections.observableArrayList(models));[m
+[31m-                listViewModels.getSelectionModel().select(resultModel);[m
+[32m+[m[32m                listViewModels.getSelectionModel().select(models.size() - 1);[m
+             } else {[m
+[31m-                int index = models.indexOf(currentModel);[m
+[32m+[m[32m                transformInputs.remove(currentModel);[m
+[32m+[m[32m                int index = modelIndex(currentModel);[m
+                 models.set(index, resultModel);[m
+                 currentModel = resultModel;[m
+                 listViewModels.setItems(FXCollections.observableArrayList(models));[m
+[36m@@ -589,16 +433,19 @@[m [mpublic class GuiController {[m
+ [m
+         } catch (NumberFormatException e) {[m
+             showError("Invalid input", "Please enter valid vertex indices (comma-separated numbers).");[m
+[31m-        } catch (Exception e) {[m
+[31m-            showError("Error", "An error occurred while removing vertices: " + e.getMessage());[m
+[32m+[m[32m        } catch (IllegalArgumentException e) {[m
+[32m+[m[32m            showError("Invalid vertices", e.getMessage());[m
+         }[m
+     }[m
+ [m
+     private List<Integer> parseVerticesToRemove(String input) {[m
+[32m+[m[32m        if (input == null || input.isBlank()) throw new IllegalArgumentException("Enter at least one vertex index.");[m
+         List<Integer> indices = new ArrayList<>();[m
+[31m-        String[] parts = input.split(",");[m
+[32m+[m[32m        String[] parts = input.split(",", -1);[m
+         for (String part : parts) {[m
+[31m-            indices.add(Integer.parseInt(part.trim()));[m
+[32m+[m[32m            int value = Integer.parseInt(part.trim());[m
+[32m+[m[32m            if (indices.contains(value)) throw new IllegalArgumentException("Vertex indices must not contain duplicates.");[m
+[32m+[m[32m            indices.add(value);[m
+         }[m
+         return indices;[m
+     }[m
+[36m@@ -613,13 +460,14 @@[m [mpublic class GuiController {[m
+         return true;[m
+     }[m
+ [m
+[31m-    private void showError(String title, String content) {[m
+[32m+[m[32m    void showError(String title, String content) {[m
+         Alert alert = new Alert(Alert.AlertType.ERROR);[m
+         alert.setTitle(title);[m
+         alert.setHeaderText(null);[m
+         alert.setContentText(content);[m
+         alert.showAndWait();[m
+     }[m
+[32m+[m[32m    void showInfo(String title, String content) { Alert alert = new Alert(Alert.AlertType.INFORMATION); alert.setTitle(title); alert.setHeaderText(null); alert.setContentText(content); alert.showAndWait(); }[m
+ [m
+     @FXML[m
+     void addCamera(MouseEvent event) {[m
+[36m@@ -660,26 +508,11 @@[m [mpublic class GuiController {[m
+     }[m
+ [m
+     @FXML[m
+[31m-    void addModel(MouseEvent event) {[m
+[31m-        FileChooser fileChooser = new FileChooser();[m
+[31m-        fileChooser.getExtensionFilters().add([m
+[31m-                new FileChooser.ExtensionFilter("Model (*.obj)", "*.obj"));[m
+[31m-        fileChooser.setTitle("Load Model");[m
+[31m-[m
+[31m-        File file = fileChooser.showOpenDialog((Stage) canvas.getScene().getWindow());[m
+[31m-        if (file == null) {[m
+[31m-            return;[m
+[31m-        }[m
+[32m+[m[32m    void addModel(MouseEvent event) { onOpenModelMenuItemClick(); }[m
+ [m
+[31m-        try {[m
+[31m-            String fileContent = Files.readString(Path.of(file.getAbsolutePath()));[m
+[31m-            Model newModel = ObjReader.read(fileContent);[m
+[31m-            models.add(newModel);[m
+[31m-            listViewModels.setItems(FXCollections.observableArrayList(models));[m
+[31m-            listViewModels.getSelectionModel().select(newModel);[m
+[31m-        } catch (Exception e) {[m
+[31m-            showError("Model Loading Error", "Failed to load model: " + e.getMessage());[m
+[31m-        }[m
+[32m+[m[32m    private int modelIndex(Model model) {[m
+[32m+[m[32m        for (int i = 0; i < models.size(); i++) if (models.get(i) == model) return i;[m
+[32m+[m[32m        return -1;[m
+     }[m
+ [m
+     @FXML[m
+[36m@@ -691,16 +524,14 @@[m [mpublic class GuiController {[m
+             return;[m
+         }[m
+ [m
+[31m-        int removedIndex = models.indexOf(selectedModel);[m
+[31m-        models.remove(selectedModel);[m
+[32m+[m[32m        int removedIndex = modelIndex(selectedModel);[m
+[32m+[m[32m        models.remove(removedIndex);[m
+[32m+[m[32m        transformInputs.remove(selectedModel);[m
+         listViewModels.setItems(FXCollections.observableArrayList(models));[m
+ [m
+[31m-        if (selectedModel == currentModel) {[m
+[31m-            if (models.isEmpty()) {[m
+[31m-                currentModel = null;[m
+[31m-            } else {[m
+[31m-                listViewModels.getSelectionModel().select(Math.min(removedIndex, models.size() - 1));[m
+[31m-            }[m
+[31m-        }[m
+[32m+[m[32m        if (models.isEmpty()) currentModel = null;[m
+[32m+[m[32m        else listViewModels.getSelectionModel().select(Math.min(removedIndex, models.size() - 1));[m
+[32m+[m[32m        polygonIndices.clear();[m
+[32m+[m[32m        updateTransformationFields();[m
+     }[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/Simple3DViewer.java b/src/main/java/com/cgengine/Simple3DViewer.java[m
+[1mindex dddfde5..62d7c79 100644[m
+[1m--- a/src/main/java/com/cgengine/Simple3DViewer.java[m
+[1m+++ b/src/main/java/com/cgengine/Simple3DViewer.java[m
+[36m@@ -14,7 +14,10 @@[m [mpublic class Simple3DViewer extends Application {[m
+ [m
+     @Override[m
+     public void start(Stage stage) throws IOException {[m
+[31m-        AnchorPane viewport = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("fxml/gui.fxml")));[m
+[32m+[m[32m        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(getClass().getResource("fxml/gui.fxml")));[m
+[32m+[m[32m        AnchorPane viewport = loader.load();[m
+[32m+[m[32m        GuiController controller = loader.getController();[m
+[32m+[m[32m        stage.setOnHidden(event -> controller.dispose());[m
+ [m
+         Scene scene = new Scene(viewport);[m
+         stage.setMinWidth(1280);[m
+[1mdiff --git a/src/main/java/com/cgengine/VertexDelete/Eraser.java b/src/main/java/com/cgengine/VertexDelete/Eraser.java[m
+[1mindex b985a85..6bddc2e 100644[m
+[1m--- a/src/main/java/com/cgengine/VertexDelete/Eraser.java[m
+[1m+++ b/src/main/java/com/cgengine/VertexDelete/Eraser.java[m
+[36m@@ -1,7 +1,8 @@[m
+ package com.cgengine.VertexDelete;[m
+ import com.cgengine.model.*;[m
+ import java.util.*;[m
+[32m+[m[32m/** Creates a valid edited model without changing the source model. */[m
+ public final class Eraser {[m
+  private Eraser(){}[m
+[31m- public static Model vertexDelete(Model source,List<Integer> removed,boolean newFile,boolean keepNormals,boolean keepTextures,boolean keepPolygons){Set<Integer> deleted=new HashSet<>(removed);Model result=new Model();Map<Integer,Integer> map=new HashMap<>();for(Polygon face:source.polygons){if(face.getVertexIndices().stream().anyMatch(deleted::contains))continue;Polygon copy=face.clone();ArrayList<Integer> indices=new ArrayList<>();for(int old:face.getVertexIndices()){indices.add(map.computeIfAbsent(old,key->{result.vertices.add(source.vertices.get(key));return result.vertices.size()-1;}));}copy.setVertexIndices(indices);result.polygons.add(copy);}result.textureVertices=new ArrayList<>(source.textureVertices);result.normals=new ArrayList<>(source.normals);result.computeNormals();return result;}[m
+[32m+[m[32m public static Model vertexDelete(Model source,List<Integer> removed,boolean newFile,boolean removeNormals,boolean removeTextures,boolean removePolygons){ModelValidator.validate(source);if(removed==null)throw new IllegalArgumentException("Vertex selection is required");Set<Integer> deleted=new HashSet<>();for(Integer index:removed){if(index==null||index<0||index>=source.vertices.size())throw new IllegalArgumentException("Vertex index is out of range");if(!deleted.add(index))throw new IllegalArgumentException("Vertex indices must not contain duplicates");}Model result=new Model();result.setTexture(source.getTexture());Map<Integer,Integer> map=new HashMap<>();for(int old=0;old<source.vertices.size();old++)if(!deleted.contains(old)){map.put(old,result.vertices.size());result.vertices.add(source.vertices.get(old));}if(!removePolygons)for(Polygon face:source.polygons){if(face.getVertexIndices().stream().anyMatch(deleted::contains))continue;Polygon copy=face.clone();ArrayList<Integer> indices=new ArrayList<>(3);for(int old:face.getVertexIndices())indices.add(map.get(old));copy.setVertexIndices(indices);if(removeTextures)copy.setTextureVertexIndices(new ArrayList<>());result.polygons.add(copy);}if(!removeTextures)result.textureVertices=new ArrayList<>(source.textureVertices);if(removeNormals)for(Polygon face:result.polygons)face.setNormalIndices(new ArrayList<>());else result.computeNormals();ModelValidator.validate(result);return result;}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/math/affine/Rotator.java b/src/main/java/com/cgengine/math/affine/Rotator.java[m
+[1mindex d100784..0c5c619 100644[m
+[1m--- a/src/main/java/com/cgengine/math/affine/Rotator.java[m
+[1m+++ b/src/main/java/com/cgengine/math/affine/Rotator.java[m
+[36m@@ -3,7 +3,7 @@[m [mimport com.cgengine.math.Matrix4f;[m
+ public class Rotator implements AffineTransformation {[m
+     public enum Axis { X,Y,Z }[m
+     private float angle; private Axis axis;[m
+[31m-    public Rotator(float angle,Axis axis){this.angle=angle;this.axis=axis;} public Rotator(int degrees,Axis axis){this((float)Math.toRadians(degrees),axis);} public Rotator(Axis axis){this(0,axis);}[m
+[32m+[m[32m    public Rotator(float angle,Axis axis){this.angle=angle;this.axis=axis;} public Rotator(int degrees,Axis axis){this((float)Math.toRadians(degrees),axis);} public static Rotator degrees(float degrees,Axis axis){return new Rotator((float)Math.toRadians(degrees),axis);} public Rotator(Axis axis){this(0,axis);}[m
+     @Override public Matrix4f getMatrix(){float c=(float)Math.cos(angle),s=(float)Math.sin(angle); return switch(axis){case X->new Matrix4f(1,0,0,0,0,c,-s,0,0,s,c,0,0,0,0,1);case Y->new Matrix4f(c,0,s,0,0,1,0,0,-s,0,c,0,0,0,0,1);case Z->new Matrix4f(c,-s,0,0,s,c,0,0,0,0,1,0,0,0,0,1);};}[m
+     public void setAxis(Axis value){axis=value;} public void setAngle(float value){angle=value;} public void setAngle(int degrees){angle=(float)Math.toRadians(degrees);} public void setRelativeAngle(float value){angle+=value;} public void setRelativeAngle(int degrees){angle+=(float)Math.toRadians(degrees);}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/math/affine/Scaling.java b/src/main/java/com/cgengine/math/affine/Scaling.java[m
+[1mindex 5c0e6e2..0d05782 100644[m
+[1m--- a/src/main/java/com/cgengine/math/affine/Scaling.java[m
+[1m+++ b/src/main/java/com/cgengine/math/affine/Scaling.java[m
+[36m@@ -4,5 +4,5 @@[m [mpublic class Scaling implements AffineTransformation {[m
+     private float x,y,z;[m
+     public Scaling(float x,float y,float z) { set(x,y,z); } public Scaling(){this(1,1,1);}[m
+     @Override public Matrix4f getMatrix(){return new Matrix4f(x,0,0,0,0,y,0,0,0,0,z,0,0,0,0,1);}[m
+[31m-    public void setX(float value){x=value;} public void setY(float value){y=value;} public void setZ(float value){z=value;} public void set(float nx,float ny,float nz){x=nx;y=ny;z=nz;} public void setRelative(float dx,float dy,float dz){set(x*dx,y*dy,z*dz);}[m
+[32m+[m[32m    public void setX(float value){set(value,y,z);} public void setY(float value){set(x,value,z);} public void setZ(float value){set(x,y,value);} public void set(float nx,float ny,float nz){if(!Float.isFinite(nx)||!Float.isFinite(ny)||!Float.isFinite(nz)||nx<=0||ny<=0||nz<=0)throw new IllegalArgumentException("Scale components must be finite and strictly greater than zero");x=nx;y=ny;z=nz;} public void setRelative(float dx,float dy,float dz){set(x*dx,y*dy,z*dz);}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/model/Model.java b/src/main/java/com/cgengine/model/Model.java[m
+[1mindex 0b1d06c..e7d1054 100644[m
+[1m--- a/src/main/java/com/cgengine/model/Model.java[m
+[1m+++ b/src/main/java/com/cgengine/model/Model.java[m
+[36m@@ -5,10 +5,26 @@[m [mimport com.cgengine.math.VectorMath;[m
+ import java.util.ArrayList;[m
+ import java.util.Objects;[m
+ import com.cgengine.render_engine.Texture2D;[m
+[32m+[m[32mimport com.cgengine.math.affine.Transformation;[m
+ public class Model implements Cloneable {[m
+[31m- public ArrayList<Vector3f> vertices=new ArrayList<>(); public ArrayList<Vector2f> textureVertices=new ArrayList<>(); public ArrayList<Vector3f> normals=new ArrayList<>(); public ArrayList<Polygon> polygons=new ArrayList<>(); private Texture2D texture;[m
+[32m+[m[32m public ArrayList<Vector3f> vertices=new ArrayList<>(); public ArrayList<Vector2f> textureVertices=new ArrayList<>(); public ArrayList<Vector3f> normals=new ArrayList<>(); public ArrayList<Polygon> polygons=new ArrayList<>(); private Texture2D texture; private ArrayList<Vector3f> transformBaseVertices;[m
+  public Texture2D getTexture(){return texture;} public void setTexture(Texture2D texture){this.texture=texture;} public void removeTexture(){texture=null;}[m
+[32m+[m[32m public void applyTransformation(Transformation transformation) {[m
+[32m+[m[32m  Objects.requireNonNull(transformation);[m
+[32m+[m[32m  Model candidate = clone();[m
+[32m+[m[32m  candidate.vertices = new ArrayList<>(vertices.size());[m
+[32m+[m[32m  for (Vector3f vertex : vertices) candidate.vertices.add(transformation.transform(vertex));[m
+[32m+[m[32m  ModelValidator.validate(candidate);[m
+[32m+[m[32m  candidate.computeNormals();[m
+[32m+[m[32m  ModelValidator.validate(candidate);[m
+[32m+[m[32m  if (transformBaseVertices == null) transformBaseVertices = new ArrayList<>(vertices);[m
+[32m+[m[32m  vertices = candidate.vertices;[m
+[32m+[m[32m  normals = candidate.normals;[m
+[32m+[m[32m  for (int i = 0; i < polygons.size(); i++)[m
+[32m+[m[32m   polygons.get(i).setNormalIndices(new ArrayList<>(candidate.polygons.get(i).getNormalIndices()));[m
+[32m+[m[32m }[m
+[32m+[m[32m public void resetTransformation(){if(transformBaseVertices!=null){vertices=new ArrayList<>(transformBaseVertices);computeNormals();transformBaseVertices=null;}}[m
+  public void triangulate(){for(Polygon p:polygons)if(p.getVertexIndices().size()!=3)throw new ModelValidationException("Only triangular faces are supported");}[m
+  public void computeNormals(){triangulate();float[] x=new float[vertices.size()],y=new float[vertices.size()],z=new float[vertices.size()];for(Polygon p:polygons){var i=p.getVertexIndices();Vector3f n=VectorMath.cross(VectorMath.subtract(vertices.get(i.get(1)),vertices.get(i.get(0))),VectorMath.subtract(vertices.get(i.get(2)),vertices.get(i.get(0))));for(int v:i){x[v]+=n.x();y[v]+=n.y();z[v]+=n.z();}p.setNormalIndices(new ArrayList<>(i));}normals=new ArrayList<>();for(int i=0;i<vertices.size();i++){Vector3f n=new Vector3f(x[i],y[i],z[i]);normals.add(VectorMath.length(n)==0?n:VectorMath.normalize(n));}}[m
+[31m- public void validate(){ModelValidator.validate(this);} @Override public Model clone(){Model r=new Model();r.vertices=new ArrayList<>(vertices);r.textureVertices=new ArrayList<>(textureVertices);r.normals=new ArrayList<>(normals);r.texture=texture;for(Polygon p:polygons)r.polygons.add(p.clone());return r;} @Override public boolean equals(Object v){return v instanceof Model m&&Objects.equals(vertices,m.vertices)&&Objects.equals(textureVertices,m.textureVertices)&&Objects.equals(normals,m.normals)&&Objects.equals(polygons,m.polygons);}@Override public int hashCode(){return Objects.hash(vertices,textureVertices,normals,polygons);}[m
+[32m+[m[32m public void validate(){ModelValidator.validate(this);} @Override public Model clone(){Model r=new Model();r.vertices=new ArrayList<>(vertices);r.textureVertices=new ArrayList<>(textureVertices);r.normals=new ArrayList<>(normals);r.texture=texture;r.transformBaseVertices=transformBaseVertices==null?null:new ArrayList<>(transformBaseVertices);for(Polygon p:polygons)r.polygons.add(p.clone());return r;} @Override public boolean equals(Object v){return v instanceof Model m&&Objects.equals(vertices,m.vertices)&&Objects.equals(textureVertices,m.textureVertices)&&Objects.equals(normals,m.normals)&&Objects.equals(polygons,m.polygons);}@Override public int hashCode(){return Objects.hash(vertices,textureVertices,normals,polygons);}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/model/Polygon.java b/src/main/java/com/cgengine/model/Polygon.java[m
+[1mindex 4f27b8e..b5b50f4 100644[m
+[1m--- a/src/main/java/com/cgengine/model/Polygon.java[m
+[1m+++ b/src/main/java/com/cgengine/model/Polygon.java[m
+[36m@@ -11,15 +11,6 @@[m [mpublic class Polygon implements Cloneable {[m
+     private ArrayList<Integer> normalIndices;[m
+     private ColorRgb baseColor = ColorRgb.WHITE;[m
+ [m
+[31m-    // public Polygon() {[m
+[31m-    //     vertexIndices = new ArrayList<Integer>();[m
+[31m-    //     textureVertexIndices = new ArrayList<Integer>(); // <-- РАСКОМЕННТИТЬ ЕСЛИ КОМПИЛЯТОР РУГАЕТСЯ НА ДЕЙСТВУЮЩИЙ КОНСТРУКТОР (НИЖЕ)[m
+[31m-    //     normalIndices = new ArrayList<Integer>();[m
+[31m-    // }[m
+[31m-[m
+[31m-[m
+[31m-    /** Для удаления вершин /VerDel **/[m
+[31m-    // Конструктор по умолчанию[m
+     public Polygon() {[m
+         vertexIndices = new ArrayList<>();[m
+         textureVertexIndices = new ArrayList<>();[m
+[36m@@ -43,20 +34,16 @@[m [mpublic class Polygon implements Cloneable {[m
+             throw new AssertionError(); // Этот код никогда не должен выполняться[m
+         }[m
+     }[m
+[31m-    /** VerDel\ **/[m
+ [m
+     public void setVertexIndices(ArrayList<Integer> vertexIndices) {[m
+[31m-        // assert vertexIndices.size() >= 3;[m
+         this.vertexIndices = vertexIndices;[m
+     }[m
+ [m
+     public void setTextureVertexIndices(ArrayList<Integer> textureVertexIndices) {[m
+[31m-        // assert textureVertexIndices.size() >= 3;[m
+         this.textureVertexIndices = textureVertexIndices;[m
+     }[m
+ [m
+     public void setNormalIndices(ArrayList<Integer> normalIndices) {[m
+[31m-        // assert normalIndices.size() >= 3;[m
+         this.normalIndices = normalIndices;[m
+     }[m
+ [m
+[1mdiff --git a/src/main/java/com/cgengine/model/SceneState.java b/src/main/java/com/cgengine/model/SceneState.java[m
+[1mindex ea03c48..35abb80 100644[m
+[1m--- a/src/main/java/com/cgengine/model/SceneState.java[m
+[1m+++ b/src/main/java/com/cgengine/model/SceneState.java[m
+[36m@@ -4,6 +4,7 @@[m [mimport java.util.*;[m
+ public final class SceneState {[m
+  private final List<Model> models=new ArrayList<>(); private Model selected;[m
+  public List<Model> models(){return Collections.unmodifiableList(models);} public Model selectedModel(){return selected;}[m
+[31m- public void addModel(Model model){models.add(Objects.requireNonNull(model));selected=model;} public boolean select(Model model){if(!models.contains(model))return false;selected=model;return true;}[m
+[31m- public boolean removeModel(Model model){int index=models.indexOf(model);if(index<0)return false;models.remove(index);if(model==selected)selected=models.isEmpty()?null:models.get(Math.min(index,models.size()-1));return true;}[m
+[32m+[m[32m public void addModel(Model model){models.add(Objects.requireNonNull(model));selected=model;} public boolean select(Model model){if(indexOf(model)<0)return false;selected=model;return true;}[m
+[32m+[m[32m public boolean removeModel(Model model){int index=indexOf(model);if(index<0)return false;models.remove(index);if(model==selected)selected=models.isEmpty()?null:models.get(Math.min(index,models.size()-1));return true;}[m
+[32m+[m[32m private int indexOf(Model model){for(int i=0;i<models.size();i++)if(models.get(i)==model)return i;return -1;}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/obj_io/reader/FaceTriangulator.java b/src/main/java/com/cgengine/obj_io/reader/FaceTriangulator.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..23e4c21[m
+[1m--- /dev/null[m
+[1m+++ b/src/main/java/com/cgengine/obj_io/reader/FaceTriangulator.java[m
+[36m@@ -0,0 +1,120 @@[m
+[32m+[m[32mpackage com.cgengine.obj_io.reader;[m
+[32m+[m
+[32m+[m[32mimport com.cgengine.math.Vector3f;[m
+[32m+[m[32mimport com.cgengine.model.Model;[m
+[32m+[m[32mimport com.cgengine.model.Polygon;[m
+[32m+[m
+[32m+[m[32mimport java.util.ArrayList;[m
+[32m+[m[32mimport java.util.HashSet;[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m
+[32m+[m[32m/** Ear clipping in a face's dominant plane; only triangles enter the working model. */[m
+[32m+[m[32mfinal class FaceTriangulator {[m
+[32m+[m[32m    private FaceTriangulator() { }[m
+[32m+[m
+[32m+[m[32m    static List<Polygon> triangulate(Model model, List<Integer> vertices, List<Integer> textures,[m
+[32m+[m[32m                                     List<Integer> normals, int line) {[m
+[32m+[m[32m        int count = vertices.size();[m
+[32m+[m[32m        if (count == 3) return List.of(triangle(vertices, textures, normals, 0, 1, 2));[m
+[32m+[m[32m        if (new HashSet<>(vertices).size() != count) throw error(line);[m
+[32m+[m
+[32m+[m[32m        double nx = 0, ny = 0, nz = 0;[m
+[32m+[m[32m        for (int i = 0; i < count; i++) {[m
+[32m+[m[32m            Vector3f a = model.vertices.get(vertices.get(i));[m
+[32m+[m[32m            Vector3f b = model.vertices.get(vertices.get((i + 1) % count));[m
+[32m+[m[32m            nx += (double) (a.y() - b.y()) * (a.z() + b.z());[m
+[32m+[m[32m            ny += (double) (a.z() - b.z()) * (a.x() + b.x());[m
+[32m+[m[32m            nz += (double) (a.x() - b.x()) * (a.y() + b.y());[m
+[32m+[m[32m        }[m
+[32m+[m[32m        int axis = Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz) ? 0[m
+[32m+[m[32m                : Math.abs(ny) >= Math.abs(nz) ? 1 : 2;[m
+[32m+[m[32m        double[] x = new double[count], y = new double[count];[m
+[32m+[m[32m        for (int i = 0; i < count; i++) {[m
+[32m+[m[32m            Vector3f v = model.vertices.get(vertices.get(i));[m
+[32m+[m[32m            x[i] = axis == 0 ? v.y() : v.x();[m
+[32m+[m[32m            y[i] = axis == 2 ? v.y() : v.z();[m
+[32m+[m[32m        }[m
+[32m+[m[32m        double area = 0;[m
+[32m+[m[32m        for (int i = 0; i < count; i++) {[m
+[32m+[m[32m            int next = (i + 1) % count;[m
+[32m+[m[32m            area += x[i] * y[next] - x[next] * y[i];[m
+[32m+[m[32m        }[m
+[32m+[m[32m        if (!Double.isFinite(area) || area == 0) throw error(line);[m
+[32m+[m[32m        for (int i = 0; i < count; i++) {[m
+[32m+[m[32m            int nextI = (i + 1) % count;[m
+[32m+[m[32m            for (int j = i + 1; j < count; j++) {[m
+[32m+[m[32m                int nextJ = (j + 1) % count;[m
+[32m+[m[32m                if (nextI == j || nextJ == i) continue;[m
+[32m+[m[32m                if (intersects(x, y, i, nextI, j, nextJ)) throw error(line);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m        int winding = area > 0 ? 1 : -1;[m
+[32m+[m
+[32m+[m[32m        List<Integer> remaining = new ArrayList<>(count);[m
+[32m+[m[32m        for (int i = 0; i < count; i++) remaining.add(i);[m
+[32m+[m[32m        List<Polygon> result = new ArrayList<>(count - 2);[m
+[32m+[m[32m        while (remaining.size() > 3) {[m
+[32m+[m[32m            boolean clipped = false;[m
+[32m+[m[32m            for (int i = 0; i < remaining.size(); i++) {[m
+[32m+[m[32m                int prev = remaining.get((i + remaining.size() - 1) % remaining.size());[m
+[32m+[m[32m                int corner = remaining.get(i);[m
+[32m+[m[32m                int next = remaining.get((i + 1) % remaining.size());[m
+[32m+[m[32m                if (cross(x, y, prev, corner, next) * winding <= 0) continue;[m
+[32m+[m[32m                boolean occupied = false;[m
+[32m+[m[32m                for (int other : remaining) {[m
+[32m+[m[32m                    if (other != prev && other != corner && other != next[m
+[32m+[m[32m                            && inside(x, y, prev, corner, next, other, winding)) {[m
+[32m+[m[32m                        occupied = true;[m
+[32m+[m[32m                        break;[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                }[m
+[32m+[m[32m                if (occupied) continue;[m
+[32m+[m[32m                result.add(triangle(vertices, textures, normals, prev, corner, next));[m
+[32m+[m[32m                remaining.remove(i);[m
+[32m+[m[32m                clipped = true;[m
+[32m+[m[32m                break;[m
+[32m+[m[32m            }[m
+[32m+[m[32m            if (!clipped) throw error(line);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        result.add(triangle(vertices, textures, normals, remaining.get(0), remaining.get(1), remaining.get(2)));[m
+[32m+[m[32m        return result;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static boolean inside(double[] x, double[] y, int a, int b, int c, int p, int winding) {[m
+[32m+[m[32m        return cross(x, y, a, b, p) * winding >= 0[m
+[32m+[m[32m                && cross(x, y, b, c, p) * winding >= 0[m
+[32m+[m[32m                && cross(x, y, c, a, p) * winding >= 0;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static double cross(double[] x, double[] y, int a, int b, int c) {[m
+[32m+[m[32m        return (x[b] - x[a]) * (y[c] - y[a]) - (y[b] - y[a]) * (x[c] - x[a]);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static boolean intersects(double[] x, double[] y, int a, int b, int c, int d) {[m
+[32m+[m[32m        double abC = cross(x, y, a, b, c), abD = cross(x, y, a, b, d);[m
+[32m+[m[32m        double cdA = cross(x, y, c, d, a), cdB = cross(x, y, c, d, b);[m
+[32m+[m[32m        if (abC == 0 && onSegment(x, y, a, b, c)) return true;[m
+[32m+[m[32m        if (abD == 0 && onSegment(x, y, a, b, d)) return true;[m
+[32m+[m[32m        if (cdA == 0 && onSegment(x, y, c, d, a)) return true;[m
+[32m+[m[32m        if (cdB == 0 && onSegment(x, y, c, d, b)) return true;[m
+[32m+[m[32m        return (abC > 0) != (abD > 0) && (cdA > 0) != (cdB > 0);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static boolean onSegment(double[] x, double[] y, int a, int b, int p) {[m
+[32m+[m[32m        return x[p] >= Math.min(x[a], x[b]) && x[p] <= Math.max(x[a], x[b])[m
+[32m+[m[32m                && y[p] >= Math.min(y[a], y[b]) && y[p] <= Math.max(y[a], y[b]);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static Polygon triangle(List<Integer> vertices, List<Integer> textures, List<Integer> normals,[m
+[32m+[m[32m                                    int a, int b, int c) {[m
+[32m+[m[32m        Polygon result = new Polygon();[m
+[32m+[m[32m        result.setVertexIndices(new ArrayList<>(List.of(vertices.get(a), vertices.get(b), vertices.get(c))));[m
+[32m+[m[32m        if (!textures.isEmpty()) result.setTextureVertexIndices(new ArrayList<>(List.of(textures.get(a), textures.get(b), textures.get(c))));[m
+[32m+[m[32m        if (!normals.isEmpty()) result.setNormalIndices(new ArrayList<>(List.of(normals.get(a), normals.get(b), normals.get(c))));[m
+[32m+[m[32m        return result;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static ObjReaderException error(int line) {[m
+[32m+[m[32m        return new ObjReaderException("Face cannot be triangulated (degenerate or non-simple polygon)", line);[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/cgengine/obj_io/reader/ObjReader.java b/src/main/java/com/cgengine/obj_io/reader/ObjReader.java[m
+[1mindex 5672509..f1fda0d 100644[m
+[1m--- a/src/main/java/com/cgengine/obj_io/reader/ObjReader.java[m
+[1m+++ b/src/main/java/com/cgengine/obj_io/reader/ObjReader.java[m
+[36m@@ -10,7 +10,7 @@[m [mimport com.cgengine.model.Polygon;[m
+ import java.util.ArrayList;[m
+ import java.util.List;[m
+ [m
+[31m-/** Parser for the supported triangular OBJ subset: v, vt, vn and f. */[m
+[32m+[m[32m/** Parser for OBJ geometry; polygonal faces become triangles before reaching Model. */[m
+ public final class ObjReader {[m
+     private ObjReader() { }[m
+ [m
+[36m@@ -29,7 +29,10 @@[m [mpublic final class ObjReader {[m
+                     case "v" -> model.vertices.add(vector3(fields, lineNumber, "vertex"));[m
+                     case "vt" -> model.textureVertices.add(vector2(fields, lineNumber));[m
+                     case "vn" -> model.normals.add(vector3(fields, lineNumber, "normal"));[m
+[31m-                    case "f" -> model.polygons.add(face(fields, model, lineNumber));[m
+[32m+[m[32m                    case "f" -> model.polygons.addAll(face(fields, model, lineNumber));[m
+[32m+[m[32m                    // These OBJ statements describe names/material assignments/smoothing.[m
+[32m+[m[32m                    // CGEngine has one UI-assigned texture per model and recomputes normals.[m
+[32m+[m[32m                    case "o", "g", "s", "mtllib", "usemtl" -> { }[m
+                     default -> throw error("Unsupported OBJ directive '" + fields[0] + "'", lineNumber);[m
+                 }[m
+             } catch (ObjReaderException exception) { throw exception;[m
+[36m@@ -45,9 +48,9 @@[m [mpublic final class ObjReader {[m
+         } catch (ModelValidationException exception) { throw error(exception.getMessage(), 0); }[m
+     }[m
+ [m
+[31m-    private static Polygon face(String[] fields, Model model, int line) {[m
+[31m-        if (fields.length != 4) throw error("Face must contain exactly three vertices", line);[m
+[31m-        List<Integer> vertices = new ArrayList<>(3), textures = new ArrayList<>(3), normals = new ArrayList<>(3);[m
+[32m+[m[32m    private static List<Polygon> face(String[] fields, Model model, int line) {[m
+[32m+[m[32m        if (fields.length < 4) throw error("Face must contain at least three vertices", line);[m
+[32m+[m[32m        List<Integer> vertices = new ArrayList<>(fields.length - 1), textures = new ArrayList<>(fields.length - 1), normals = new ArrayList<>(fields.length - 1);[m
+         FaceForm form = null;[m
+         for (int i = 1; i < fields.length; i++) {[m
+             String[] index = fields[i].split("/", -1);[m
+[36m@@ -58,11 +61,7 @@[m [mpublic final class ObjReader {[m
+             if (cornerForm.hasTexture) textures.add(index(index[1], model.textureVertices.size(), "texture", line));[m
+             if (cornerForm.hasNormal) normals.add(index(index[2], model.normals.size(), "normal", line));[m
+         }[m
+[31m-        Polygon polygon = new Polygon();[m
+[31m-        polygon.setVertexIndices(new ArrayList<>(vertices));[m
+[31m-        polygon.setTextureVertexIndices(new ArrayList<>(textures));[m
+[31m-        polygon.setNormalIndices(new ArrayList<>(normals));[m
+[31m-        return polygon;[m
+[32m+[m[32m        return FaceTriangulator.triangulate(model, vertices, textures, normals, line);[m
+     }[m
+ [m
+     private static int index(String token, int count, String kind, int line) {[m
+[1mdiff --git a/src/main/java/com/cgengine/obj_io/writer/ObjWriter.java b/src/main/java/com/cgengine/obj_io/writer/ObjWriter.java[m
+[1mindex 1a6f910..8aabf83 100644[m
+[1m--- a/src/main/java/com/cgengine/obj_io/writer/ObjWriter.java[m
+[1m+++ b/src/main/java/com/cgengine/obj_io/writer/ObjWriter.java[m
+[36m@@ -18,6 +18,7 @@[m [mpublic final class ObjWriter {[m
+     public void write(final Model model, final String filename) {[m
+         if (filename == null || filename.isBlank()) throw new ObjWriteException("Output filename is empty", null);[m
+         ModelValidator.validate(model);[m
+[32m+[m[32m        if (model.vertices.isEmpty()) throw new ObjWriteException("Cannot save OBJ without vertices", null);[m
+         try (BufferedWriter writer = Files.newBufferedWriter(Path.of(filename), StandardCharsets.UTF_8)) {[m
+             for (Vector3f vertex : model.vertices) writer.write("v " + vertex.x() + " " + vertex.y() + " " + vertex.z() + "\n");[m
+             for (Vector2f texture : model.textureVertices) writer.write("vt " + texture.x() + " " + texture.y() + "\n");[m
+[1mdiff --git a/src/main/java/com/cgengine/render_engine/PolygonFiller.java b/src/main/java/com/cgengine/render_engine/PolygonFiller.java[m
+[1mindex abd1ba7..b46589b 100644[m
+[1m--- a/src/main/java/com/cgengine/render_engine/PolygonFiller.java[m
+[1m+++ b/src/main/java/com/cgengine/render_engine/PolygonFiller.java[m
+[36m@@ -13,7 +13,12 @@[m [mpublic final class PolygonFiller {[m
+  public static void publish(GraphicsContext c,FrameBuffer b){c.getPixelWriter().setPixels(0,0,b.width(),b.height(),PixelFormat.getIntArgbInstance(),b.colors(),0,b.width());}[m
+  public static void fill(FrameBuffer b,Camera camera,Model m){fill(b,camera,m,null);} public static void fill(FrameBuffer b,Camera camera,Model m,Integer overrideColor){ModelValidator.validate(m);Matrix4f view=camera.getViewMatrix(),mvp=MatrixMath.multiply(camera.getProjectionMatrix(),view);for(var p:m.polygons){int base=overrideColor==null?p.getBaseColor().argb():overrideColor;float brightness=Light.CAMERA_DIRECTIONAL.brightness(faceNormal(view,m,p));boolean textured=m.getTexture()!=null&&p.getTextureVertexIndices().size()==3;List<ClipVertex> clipped=Clipper.clipTriangle(clip(mvp,m.vertices.get(p.getVertexIndices().get(0)),uv(m,p,0)),clip(mvp,m.vertices.get(p.getVertexIndices().get(1)),uv(m,p,1)),clip(mvp,m.vertices.get(p.getVertexIndices().get(2)),uv(m,p,2)));for(ClipVertex[] triangle:Clipper.triangles(clipped)){RasterVertex[] v=new RasterVertex[3];try{for(int i=0;i<3;i++){Vector4f clip=triangle[i].position();Vector3f n=MatrixMath.perspectiveDivide(clip);Vector2f s=GraphicConveyor.vertexToVec2(n,b.width(),b.height());float invW=1/clip.w();Vector2f uv=triangle[i].uv();v[i]=new RasterVertex(s.x(),s.y(),n.z(),uv==null?0:uv.x()*invW,uv==null?0:uv.y()*invW,invW);}if(textured)TriangleRasterizer.rasterize(b,v[0],v[1],v[2],(w0,w1,w2)->{float reciprocal=w0*v[0].inverseW()+w1*v[1].inverseW()+w2*v[2].inverseW();int sampled=TextureSampler.sample(m.getTexture(),(w0*v[0].uOverW()+w1*v[1].uOverW()+w2*v[2].uOverW())/reciprocal,(w0*v[0].vOverW()+w1*v[1].vOverW()+w2*v[2].vOverW())/reciprocal);return Light.CAMERA_DIRECTIONAL.shade(sampled,brightness);});else TriangleRasterizer.rasterize(b,v[0],v[1],v[2],Light.CAMERA_DIRECTIONAL.shade(base,brightness));}catch(IllegalArgumentException ignored){}}}}[m
+  private static Vector2f uv(Model model,com.cgengine.model.Polygon polygon,int corner){return polygon.getTextureVertexIndices().size()==3?model.textureVertices.get(polygon.getTextureVertexIndices().get(corner)):null;}[m
+[31m- private static Vector3f faceNormal(Matrix4f view,Model model,com.cgengine.model.Polygon polygon){var i=polygon.getVertexIndices();Vector3f a=viewPoint(view,model.vertices.get(i.get(0))),b=viewPoint(view,model.vertices.get(i.get(1))),c=viewPoint(view,model.vertices.get(i.get(2)));return VectorMath.cross(VectorMath.subtract(b,a),VectorMath.subtract(c,a));}[m
+[31m- private static Vector3f viewPoint(Matrix4f view,Vector3f point){Vector4f v=MatrixMath.multiply(view,new Vector4f(point.x(),point.y(),point.z(),1));return new Vector3f(v.x(),v.y(),v.z());}[m
+[32m+[m[32m /** Flat Lambert shading uses the mean of the corner normals in camera space. */[m
+[32m+[m[32m private static Vector3f faceNormal(Matrix4f view,Model model,com.cgengine.model.Polygon polygon) {[m
+[32m+[m[32m  Vector3f normal = new Vector3f(0,0,0);[m
+[32m+[m[32m  for (int index : polygon.getNormalIndices()) normal = VectorMath.add(normal, model.normals.get(index));[m
+[32m+[m[32m  Vector4f cameraNormal = MatrixMath.multiply(view, new Vector4f(normal.x(),normal.y(),normal.z(),0));[m
+[32m+[m[32m  return new Vector3f(cameraNormal.x(),cameraNormal.y(),cameraNormal.z());[m
+[32m+[m[32m }[m
+  private static ClipVertex clip(Matrix4f m,Vector3f v,Vector2f uv){return new ClipVertex(MatrixMath.multiply(m,new Vector4f(v.x(),v.y(),v.z(),1)),uv);} private static ClipVertex clip(Matrix4f m,Vector3f v){return clip(m,v,null);} private static int toArgb(Color c){Color v=c==null?Color.WHITE:c;return ((int)Math.round(v.getOpacity()*255)<<24)|((int)Math.round(v.getRed()*255)<<16)|((int)Math.round(v.getGreen()*255)<<8)|(int)Math.round(v.getBlue()*255);}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/render_engine/RenderEngine.java b/src/main/java/com/cgengine/render_engine/RenderEngine.java[m
+[1mindex ff7373a..5f91013 100644[m
+[1m--- a/src/main/java/com/cgengine/render_engine/RenderEngine.java[m
+[1m+++ b/src/main/java/com/cgengine/render_engine/RenderEngine.java[m
+[36m@@ -9,7 +9,7 @@[m [mpublic final class RenderEngine {[m
+  private RenderEngine(){} public static void render(GraphicsContext c,Camera camera,Model model,int w,int h){ModelValidator.validate(model);Matrix4f mvp=MatrixMath.multiply(camera.getProjectionMatrix(),camera.getViewMatrix());for(Polygon p:model.polygons){List<ClipVertex> polygon=Clipper.clipTriangle(clip(mvp,model.vertices.get(p.getVertexIndices().get(0))),clip(mvp,model.vertices.get(p.getVertexIndices().get(1))),clip(mvp,model.vertices.get(p.getVertexIndices().get(2))));draw(c,polygon,w,h);}}[m
+  public static void renderFrame(GraphicsContext context,Camera camera,List<Model> models,int width,int height){FrameBuffer buffer=new FrameBuffer(width,height);renderFrame(buffer,camera,models);PolygonFiller.publish(context,buffer);}[m
+  /** Renders into caller-owned storage so a UI frame does not allocate a depth/color buffer. */[m
+[31m- public static void renderFrame(FrameBuffer buffer,Camera camera,List<Model> models){buffer.clear(0);for(Model model:models)PolygonFiller.fill(buffer,camera,model);}[m
+[32m+[m[32m public static void renderFrame(FrameBuffer buffer,Camera camera,List<Model> models){buffer.clear(0);for(Model model:models){try{PolygonFiller.fill(buffer,camera,model);}catch(ModelValidationException invalidModel){/* Invalid model data must not stop other models or the next UI frame. */}}}[m
+  private static void draw(GraphicsContext c,List<ClipVertex> polygon,int w,int h){if(polygon.size()<2)return;try{for(int i=0;i<polygon.size();i++){Vector3f a=MatrixMath.perspectiveDivide(polygon.get(i).position()),b=MatrixMath.perspectiveDivide(polygon.get((i+1)%polygon.size()).position());Vector2f pa=GraphicConveyor.vertexToVec2(a,w,h),pb=GraphicConveyor.vertexToVec2(b,w,h);c.strokeLine(pa.x(),pa.y(),pb.x(),pb.y());}}catch(IllegalArgumentException ignored){}}[m
+  private static ClipVertex clip(Matrix4f m,Vector3f v){return new ClipVertex(MatrixMath.multiply(m,new Vector4f(v.x(),v.y(),v.z(),1)));}[m
+ }[m
+[1mdiff --git a/src/main/java/com/cgengine/render_engine/Texture2D.java b/src/main/java/com/cgengine/render_engine/Texture2D.java[m
+[1mindex a6d3ea0..3d4aac7 100644[m
+[1m--- a/src/main/java/com/cgengine/render_engine/Texture2D.java[m
+[1m+++ b/src/main/java/com/cgengine/render_engine/Texture2D.java[m
+[36m@@ -1,12 +1,52 @@[m
+ package com.cgengine.render_engine;[m
+[32m+[m
+ import javax.imageio.ImageIO;[m
+[32m+[m[32mimport javax.imageio.ImageReader;[m
+[32m+[m[32mimport javax.imageio.stream.ImageInputStream;[m
+ import java.awt.image.BufferedImage;[m
+ import java.io.File;[m
+ import java.io.IOException;[m
+[31m-/** Immutable local ARGB texture; no external texture API is used. */[m
+[32m+[m[32mimport java.util.Locale;[m
+[32m+[m
+[32m+[m[32m/** Immutable local ARGB texture; ImageIO only decodes the image file. */[m
+ public final class Texture2D {[m
+[31m-    private final int width, height; private final int[] pixels;[m
+[31m-    public Texture2D(int width,int height,int[] pixels){if(width<1||width>4096||height<1||height>4096||pixels==null||pixels.length!=width*height)throw new IllegalArgumentException("Texture dimensions must be in 1..4096 and match pixels");this.width=width;this.height=height;this.pixels=pixels.clone();}[m
+[31m-    public static Texture2D load(File file) throws IOException {if(file==null)throw new IOException("Texture file is not selected");String name=file.getName().toLowerCase();if(!(name.endsWith(".png")||name.endsWith(".jpg")||name.endsWith(".jpeg")))throw new IOException("Only PNG, JPG and JPEG textures are supported");BufferedImage image=ImageIO.read(file);if(image==null)throw new IOException("The selected file is not a readable image");if(image.getWidth()>4096||image.getHeight()>4096)throw new IOException("Texture dimensions must be in 1..4096");int[] pixels=new int[image.getWidth()*image.getHeight()];image.getRGB(0,0,image.getWidth(),image.getHeight(),pixels,0,image.getWidth());return new Texture2D(image.getWidth(),image.getHeight(),pixels);}[m
+[31m-    public int width(){return width;} public int height(){return height;} int pixel(int x,int y){return pixels[y*width+x];}[m
+[32m+[m[32m    private final int width, height;[m
+[32m+[m[32m    private final int[] pixels;[m
+[32m+[m
+[32m+[m[32m    public Texture2D(int width, int height, int[] pixels) {[m
+[32m+[m[32m        if (width < 1 || width > 4096 || height < 1 || height > 4096[m
+[32m+[m[32m                || pixels == null || pixels.length != width * height)[m
+[32m+[m[32m            throw new IllegalArgumentException("Texture dimensions must be in 1..4096 and match pixels");[m
+[32m+[m[32m        this.width = width; this.height = height; this.pixels = pixels.clone();[m
+[32m+[m[32m        // D-03 has no alpha channel: every sampled texel is opaque.[m
+[32m+[m[32m        for (int i = 0; i < this.pixels.length; i++) this.pixels[i] |= 0xFF000000;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    public static Texture2D load(File file) throws IOException {[m
+[32m+[m[32m        if (file == null) throw new IOException("Texture file is not selected");[m
+[32m+[m[32m        String name = file.getName().toLowerCase(Locale.ROOT);[m
+[32m+[m[32m        if (!(name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg")))[m
+[32m+[m[32m            throw new IOException("Only PNG, JPG and JPEG textures are supported");[m
+[32m+[m[32m        try (ImageInputStream input = ImageIO.createImageInputStream(file)) {[m
+[32m+[m[32m            if (input == null) throw new IOException("Texture file cannot be read");[m
+[32m+[m[32m            var readers = ImageIO.getImageReaders(input);[m
+[32m+[m[32m            if (!readers.hasNext()) throw new IOException("The selected file is not a readable image");[m
+[32m+[m[32m            ImageReader reader = readers.next();[m
+[32m+[m[32m            try {[m
+[32m+[m[32m                String format = reader.getFormatName();[m
+[32m+[m[32m                if (!(format.equalsIgnoreCase("png") || format.equalsIgnoreCase("jpeg")))[m
+[32m+[m[32m                    throw new IOException("Only PNG, JPG and JPEG textures are supported");[m
+[32m+[m[32m                reader.setInput(input);[m
+[32m+[m[32m                int width = reader.getWidth(0), height = reader.getHeight(0);[m
+[32m+[m[32m                // Reject dimensions before allocating/decoding an oversized bitmap.[m
+[32m+[m[32m                if (width < 1 || height < 1 || width > 4096 || height > 4096)[m
+[32m+[m[32m                    throw new IOException("Texture dimensions must be in 1..4096");[m
+[32m+[m[32m                BufferedImage image = reader.read(0);[m
+[32m+[m[32m                return new Texture2D(width, height, image.getRGB(0, 0, width, height, null, 0, width));[m
+[32m+[m[32m            } finally { reader.dispose(); }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m    public int width() { return width; }[m
+[32m+[m[32m    public int height() { return height; }[m
+[32m+[m[32m    int pixel(int x, int y) { return pixels[y * width + x]; }[m
+ }[m
+[1mdiff --git a/src/main/resources/com/cgengine/fxml/gui.fxml b/src/main/resources/com/cgengine/fxml/gui.fxml[m
+[1mindex f4663af..aefb6ea 100644[m
+[1m--- a/src/main/resources/com/cgengine/fxml/gui.fxml[m
+[1m+++ b/src/main/resources/com/cgengine/fxml/gui.fxml[m
+[36m@@ -100,7 +100,7 @@[m
+                <content>[m
+                  <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="167.0" prefWidth="204.0">[m
+                         <children>[m
+[31m-                           <Label layoutX="8.0" layoutY="6.0" text="Select Vertices to remove" />[m
+[32m+[m[32m                           <Label layoutX="8.0" layoutY="6.0" text="Vertex indices (0, 2, 7)" />[m
+                            <TextField fx:id="VerticesToRemove" layoutX="4.0" layoutY="30.0" />[m
+                            <Button fx:id="vertexRemoverButton" layoutX="159.0" layoutY="30.0" mnemonicParsing="false" text="OK">[m
+                               <cursor>[m
+[36m@@ -139,13 +139,13 @@[m
+                   <content>[m
+                      <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="167.0" prefWidth="204.0">[m
+                         <children>[m
+[31m-                           <Label layoutX="8.0" layoutY="6.0" text="Input for model scaling" />[m
+[32m+[m[32m                           <Label layoutX="8.0" layoutY="6.0" text="Scale x y z (each &gt; 0)" />[m
+                            <TextField fx:id="inputForModelScaling" layoutX="4.0" layoutY="30.0" />[m
+[31m-                           <Label layoutX="8.0" layoutY="59.0" text="Input for model rotation" />[m
+[32m+[m[32m                           <Label layoutX="8.0" layoutY="59.0" text="Input for model rotation (degrees)" />[m
+                            <TextField fx:id="inputForModelRotation" layoutX="4.0" layoutY="83.0" />[m
+                            <Label layoutX="8.0" layoutY="112.0" text="Input for model moving" />[m
+                            <TextField fx:id="inputForModelMoving" layoutX="4.0" layoutY="136.0" />[m
+[31m-                           <Button layoutX="109.0" layoutY="80.0" mnemonicParsing="false" onMouseClicked="#applyTransformation" prefHeight="32.0" prefWidth="131.0" rotate="90.0" text="ОКЭЙ">[m
+[32m+[m[32m                           <Button layoutX="109.0" layoutY="80.0" mnemonicParsing="false" onMouseClicked="#applyTransformation" prefHeight="32.0" prefWidth="131.0" rotate="90.0" text="Apply transform">[m
+                               <cursor>[m
+                                  <Cursor fx:constant="HAND" />[m
+                               </cursor>[m
+[36m@@ -165,12 +165,12 @@[m
+                      </AnchorPane>[m
+                   </content>[m
+                </TitledPane>[m
+[31m-               <TitledPane animated="false" prefHeight="165.0" prefWidth="206.0" text="Choose Color">[m
+[32m+[m[32m               <TitledPane animated="false" prefHeight="235.0" prefWidth="206.0" text="Color / Texture / Polygons">[m
+                 <content>[m
+                     <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="167.0" prefWidth="204.0">[m
+                         <children>[m
+                             <Label layoutX="8.0" layoutY="10.0" text="Select a color:" />[m
+[31m-                            <Label layoutX="8.0" layoutY="30.0" text="Polygon indices:" />[m
+[32m+[m[32m                            <Label layoutX="8.0" layoutY="30.0" text="Polygon indices (0, 2, 7):" />[m
+                             <TextField fx:id="polygonIndices" layoutX="8.0" layoutY="48.0" prefWidth="118.0" />[m
+                             <Button layoutX="130.0" layoutY="48.0" mnemonicParsing="false" onAction="#selectAllPolygons" prefWidth="62.0" text="All" />[m
+                             <ComboBox fx:id="colorPicker" layoutX="8.0" layoutY="77.0" prefWidth="190.0">[m
+[36m@@ -187,6 +187,7 @@[m
+                             </ComboBox>[m
+                             <Button fx:id="applyColorButton" layoutX="8.0" layoutY="117.0" mnemonicParsing="false" onAction="#chooseColor" prefWidth="92" text="Apply" />[m
+                             <Button fx:id="resetColorButton" layoutX="98" layoutY="117.0" mnemonicParsing="false" onAction="#resetPolygonColor" prefWidth="94" text="Reset" />[m
+[32m+[m[32m                            <Button layoutX="8.0" layoutY="175.0" onAction="#removePolygons" prefWidth="184" text="Delete selected polygons" />[m
+                             <Button layoutX="8.0" layoutY="143.0" mnemonicParsing="false" onAction="#chooseTexture" prefWidth="92" text="Texture" />[m
+                             <Button layoutX="108.0" layoutY="143.0" mnemonicParsing="false" onAction="#removeTexture" prefWidth="84" text="Clear texture" />[m
+                         </children>[m
+[1mdiff --git a/tests/com/cgengine/ArchiveObjTest.java b/tests/com/cgengine/ArchiveObjTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..bcc25f4[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/ArchiveObjTest.java[m
+[36m@@ -0,0 +1,81 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m
+[32m+[m[32mimport com.cgengine.math.Vector2f;[m
+[32m+[m[32mimport com.cgengine.math.Vector3f;[m
+[32m+[m[32mimport com.cgengine.model.Model;[m
+[32m+[m[32mimport com.cgengine.model.ModelValidator;[m
+[32m+[m[32mimport com.cgengine.obj_io.reader.ObjReader;[m
+[32m+[m[32mimport com.cgengine.obj_io.writer.ObjWriter;[m
+[32m+[m[32mimport com.cgengine.render_engine.Camera;[m
+[32m+[m[32mimport com.cgengine.render_engine.RenderEngine;[m
+[32m+[m[32mimport com.cgengine.render_engine.Rasterization.FrameBuffer;[m
+[32m+[m[32mimport org.junit.jupiter.api.Assumptions;[m
+[32m+[m[32mimport org.junit.jupiter.api.Test;[m
+[32m+[m[32mimport org.junit.jupiter.api.io.TempDir;[m
+[32m+[m
+[32m+[m[32mimport java.nio.file.Files;[m
+[32m+[m[32mimport java.nio.file.Path;[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m
+[32m+[m[32mimport static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m
+[32m+[m[32m/** Local archive regression; archived sample assets are intentionally not versioned. */[m
+[32m+[m[32mclass ArchiveObjTest {[m
+[32m+[m[32m    @TempDir Path directory;[m
+[32m+[m
+[32m+[m[32m    @Test void caracalCubeLoadsRendersAndRoundTrips() throws Exception {[m
+[32m+[m[32m        exercise(Path.of("3DModels_DELETE/CaracalCube/caracal_cube.obj"), 8, 12);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Test void riggedHandLoadsRendersAndRoundTrips() throws Exception {[m
+[32m+[m[32m        exercise(Path.of("3DModels_DELETE/eo53jaydu328-Rigged_Hand/Rigged_Hand/Rigged_Hand_obj/Rigged Hand.obj"),[m
+[32m+[m[32m                1086, 2072);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private void exercise(Path path, int vertices, int triangles) throws Exception {[m
+[32m+[m[32m        Assumptions.assumeTrue(Files.exists(path), "Optional local OBJ archive is absent");[m
+[32m+[m[32m        Model model = ObjReader.read(Files.readString(path));[m
+[32m+[m[32m        ModelValidator.validate(model);[m
+[32m+[m[32m        assertEquals(vertices, model.vertices.size());[m
+[32m+[m[32m        assertEquals(triangles, model.polygons.size());[m
+[32m+[m[32m        assertTrue(model.polygons.stream().allMatch(p -> p.getVertexIndices().size() == 3));[m
+[32m+[m
+[32m+[m[32m        float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;[m
+[32m+[m[32m        float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;[m
+[32m+[m[32m        for (Vector3f vertex : model.vertices) {[m
+[32m+[m[32m            minX = Math.min(minX, vertex.x()); maxX = Math.max(maxX, vertex.x());[m
+[32m+[m[32m            minY = Math.min(minY, vertex.y()); maxY = Math.max(maxY, vertex.y());[m
+[32m+[m[32m            minZ = Math.min(minZ, vertex.z()); maxZ = Math.max(maxZ, vertex.z());[m
+[32m+[m[32m        }[m
+[32m+[m[32m        Vector3f center = new Vector3f((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);[m
+[32m+[m[32m        float distance = Math.max(maxX - minX, Math.max(maxY - minY, maxZ - minZ)) * 3 + .1f;[m
+[32m+[m[32m        Camera camera = new Camera(new Vector2f(0, (float) Math.PI / 2), distance, center, 1, 1, .01f, distance * 10);[m
+[32m+[m[32m        FrameBuffer frame = new FrameBuffer(256, 256);[m
+[32m+[m[32m        RenderEngine.renderFrame(frame, camera, List.of(model));[m
+[32m+[m[32m        assertTrue(frameHasPixels(frame), "Imported model must be visible to the CPU renderer");[m
+[32m+[m
+[32m+[m[32m        FxTestSupport.run(() -> {[m
+[32m+[m[32m            try (UiRegressionTest.View view = new UiRegressionTest.View()) {[m
+[32m+[m[32m                view.load(path);[m
+[32m+[m[32m                assertEquals(triangles, view.selected().polygons.size());[m
+[32m+[m[32m                view.controller.renderFrame();[m
+[32m+[m[32m                assertNull(view.controller.error);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m        Path output = directory.resolve(path.getFileName());[m
+[32m+[m[32m        new ObjWriter().write(model, output.toString());[m
+[32m+[m[32m        Model reloaded = ObjReader.read(Files.readString(output));[m
+[32m+[m[32m        ModelValidator.validate(reloaded);[m
+[32m+[m[32m        assertEquals(vertices, reloaded.vertices.size());[m
+[32m+[m[32m        assertEquals(triangles, reloaded.polygons.size());[m
+[32m+[m[32m        assertEquals(model.vertices, reloaded.vertices);[m
+[32m+[m[32m        assertEquals(model.textureVertices, reloaded.textureVertices);[m
+[32m+[m[32m        assertEquals(model.polygons, reloaded.polygons);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private static boolean frameHasPixels(FrameBuffer frame) {[m
+[32m+[m[32m        for (int color : frame.colors()) if (color != 0) return true;[m
+[32m+[m[32m        return false;[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/com/cgengine/EndToEndRegressionTest.java b/tests/com/cgengine/EndToEndRegressionTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..3395e5a[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/EndToEndRegressionTest.java[m
+[36m@@ -0,0 +1,115 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m
+[32m+[m[32mimport com.cgengine.VertexDelete.Eraser;[m
+[32m+[m[32mimport com.cgengine.math.*;[m
+[32m+[m[32mimport com.cgengine.math.affine.*;[m
+[32m+[m[32mimport com.cgengine.model.*;[m
+[32m+[m[32mimport com.cgengine.obj_io.reader.ObjReader;[m
+[32m+[m[32mimport com.cgengine.obj_io.writer.ObjWriter;[m
+[32m+[m[32mimport com.cgengine.render_engine.*;[m
+[32m+[m[32mimport com.cgengine.render_engine.Rasterization.FrameBuffer;[m
+[32m+[m[32mimport org.junit.jupiter.api.Test;[m
+[32m+[m[32mimport org.junit.jupiter.api.io.TempDir;[m
+[32m+[m[32mimport java.nio.file.*;[m
+[32m+[m[32mimport java.util.*;[m
+[32m+[m[32mimport static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m
+[32m+[m[32mclass EndToEndRegressionTest {[m
+[32m+[m[32m    @TempDir Path directory;[m
+[32m+[m[32m    @Test void emptyExportFailsBeforeReplacingAnExistingFile() throws Exception {[m
+[32m+[m[32m        Path file = directory.resolve("existing.obj");[m
+[32m+[m[32m        Files.writeString(file, UiRegressionTest.OBJ);[m
+[32m+[m[32m        assertThrows(com.cgengine.obj_io.writer.ObjWriteException.class,[m
+[32m+[m[32m                () -> new ObjWriter().write(new Model(), file.toString()));[m
+[32m+[m[32m        assertEquals(UiRegressionTest.OBJ, Files.readString(file));[m
+[32m+[m[32m    }[m
+[32m+[m[32m    @Test void everyObjFaceFormSurvivesRenderEditAndUnicodeRoundTrip() throws Exception {[m
+[32m+[m[32m        for (String face : List.of("f 1 2 3", "f 1/1 2/2 3/3", "f 1//1 2//1 3//1", "f 1/1/1 2/2/1 3/3/1")) {[m
+[32m+[m[32m            Model model = ObjReader.read("v -1 -1 0\nv 1 -1 0\nv 0 1 0\nv 10 10 10\n"[m
+[32m+[m[32m                    + "vt 0 0\nvt 1 0\nvt 0 1\nvn 0 0 1\n" + face);[m
+[32m+[m[32m            model.polygons.getFirst().setBaseColor(ColorRgb.RED);[m
+[32m+[m[32m            FrameBuffer frame = new FrameBuffer(64, 64);[m
+[32m+[m[32m            Camera camera = new Camera(new Vector2f(0, (float)Math.PI / 2), 5, new Vector3f(0,0,0), 1,1,.1f,100);[m
+[32m+[m[32m            RenderEngine.renderFrame(frame, camera, List.of(model));[m
+[32m+[m[32m            assertTrue(Float.isFinite(frame.depthAt(32,32)));[m
+[32m+[m[32m            int[] first = frame.colors().clone();[m
+[32m+[m[32m            RenderEngine.renderFrame(frame, camera, List.of(model)); assertArrayEquals(first, frame.colors());[m
+[32m+[m[32m            Model edited = Eraser.vertexDelete(model, List.of(3), true, false, false, false);[m
+[32m+[m[32m            assertEquals(4, model.vertices.size()); assertEquals(3, edited.vertices.size());[m
+[32m+[m[32m            edited.applyTransformation(new Transformation(Rotator.degrees(180, Rotator.Axis.Z), new Scaling(2,3,4)));[m
+[32m+[m[32m            Path file = directory.resolve("модель.obj"); new ObjWriter().write(edited, file.toString());[m
+[32m+[m[32m            Model reloaded = ObjReader.read(Files.readString(file));[m
+[32m+[m[32m            assertEquals(edited.vertices, reloaded.vertices); ModelValidator.validate(reloaded);[m
+[32m+[m[32m            assertEquals(ColorRgb.WHITE, reloaded.polygons.getFirst().getBaseColor());[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m    @Test void overflowIsAtomicAndUnselectedLooseVerticesSurviveDeletion() {[m
+[32m+[m[32m        Model model = ObjReader.read(UiRegressionTest.OBJ + "v 10 10 10\n");[m
+[32m+[m[32m        List<Vector3f> before = new ArrayList<>(model.vertices);[m
+[32m+[m[32m        assertThrows(IllegalArgumentException.class, () -> model.applyTransformation(new Transformation(new Scaling(Float.MAX_VALUE,1,1))));[m
+[32m+[m[32m        assertEquals(before, model.vertices); ModelValidator.validate(model);[m
+[32m+[m[32m        Model result = Eraser.vertexDelete(model, List.of(0), false, false, false, false);[m
+[32m+[m[32m        assertEquals(before.subList(1, before.size()), result.vertices);[m
+[32m+[m[32m        Model empty = Eraser.vertexDelete(model, List.of(0,1,2,3,4), false,false,false,false);[m
+[32m+[m[32m        assertTrue(empty.vertices.isEmpty()); assertTrue(empty.polygons.isEmpty()); ModelValidator.validate(empty);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    @Test void pngJpegLimitsAndActualFormatAreChecked() throws Exception {[m
+[32m+[m[32m        var image = new java.awt.image.BufferedImage(2,2,java.awt.image.BufferedImage.TYPE_INT_RGB);[m
+[32m+[m[32m        image.setRGB(0,0,0xFF0000); image.setRGB(1,0,0x00FF00);[m
+[32m+[m[32m        image.setRGB(0,1,0x0000FF); image.setRGB(1,1,0xFFFFFF);[m
+[32m+[m[32m        for (String extension : List.of("png", "jpg", "jpeg")) {[m
+[32m+[m[32m            Path file = directory.resolve("image." + extension);[m
+[32m+[m[32m            javax.imageio.ImageIO.write(image, extension.equals("png") ? "png" : "jpeg", file.toFile());[m
+[32m+[m[32m            Texture2D texture = Texture2D.load(file.toFile()); assertEquals(2, texture.width());[m
+[32m+[m[32m            if (extension.equals("png")) {[m
+[32m+[m[32m                assertEquals(0xFFFF0000, TextureSampler.sample(texture, 0,1));[m
+[32m+[m[32m                assertEquals(0xFF00FF00, TextureSampler.sample(texture, 1,1));[m
+[32m+[m[32m                assertEquals(0xFF0000FF, TextureSampler.sample(texture, 0,0));[m
+[32m+[m[32m                assertEquals(0xFFFFFFFF, TextureSampler.sample(texture, 1,0));[m
+[32m+[m[32m                assertEquals(TextureSampler.sample(texture,0,1),TextureSampler.sample(texture,-.2f,1.4f));[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m        Path disguised = directory.resolve("gif.png"); javax.imageio.ImageIO.write(image,"gif",disguised.toFile());[m
+[32m+[m[32m        assertThrows(java.io.IOException.class, () -> Texture2D.load(disguised.toFile()));[m
+[32m+[m[32m        assertDoesNotThrow(() -> new Texture2D(4096,4096,new int[4096*4096]));[m
+[32m+[m[32m        assertThrows(IllegalArgumentException.class, () -> new Texture2D(4097,1,new int[4097]));[m
+[32m+[m[32m    }[m
+[32m+[m[32m    @Test void invalidModelDoesNotStopOtherModelsOrSubsequentFrames() {[m
+[32m+[m[32m        Model good = ObjReader.read(UiRegressionTest.OBJ), bad = good.clone();[m
+[32m+[m[32m        bad.vertices.set(0, new Vector3f(Float.NaN,0,0));[m
+[32m+[m[32m        FrameBuffer frame = new FrameBuffer(64,64);[m
+[32m+[m[32m        Camera camera = new Camera(new Vector2f(0,(float)Math.PI/2),5,new Vector3f(0,0,0),1,1,.1f,100);[m
+[32m+[m[32m        RenderEngine.renderFrame(frame,camera,List.of(good)); int[] expected = frame.colors().clone();[m
+[32m+[m[32m        RenderEngine.renderFrame(frame,camera,List.of(bad,good)); assertArrayEquals(expected,frame.colors());[m
+[32m+[m[32m        RenderEngine.renderFrame(frame,camera,List.of(good,bad)); assertArrayEquals(expected,frame.colors());[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Test void textureStaysOnTheSameSurfacePointWhenCameraMoves() {[m
+[32m+[m[32m        Model model = ObjReader.read("v -1 -1 0\nv 1 -1 0\nv -1 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nf 1/1 2/2 3/3");[m
+[32m+[m[32m        int[] pixels = new int[16];[m
+[32m+[m[32m        for (int i=0;i<16;i++) pixels[i]=0xFF000000 | ((i+1)*15<<16) | ((16-i)*15<<8);[m
+[32m+[m[32m        Texture2D texture = new Texture2D(4,4,pixels); model.setTexture(texture);[m
+[32m+[m[32m        Vector3f surface = new Vector3f(-.4f,-.2f,0); // UV = (0.3, 0.4), away from texel borders.[m
+[32m+[m[32m        FrameBuffer frame = new FrameBuffer(512,512);[m
+[32m+[m[32m        for (float angle : new float[]{0,.5f,1f}) {[m
+[32m+[m[32m            Camera camera = new Camera(new Vector2f(angle,(float)Math.PI/2),3,new Vector3f(0,0,0),1,1,.1f,100);[m
+[32m+[m[32m            RenderEngine.renderFrame(frame,camera,List.of(model));[m
+[32m+[m[32m            Matrix4f view = camera.getViewMatrix();[m
+[32m+[m[32m            Vector3f projected = GraphicConveyor.multiplyMatrix4ByVector3(MatrixMath.multiply(camera.getProjectionMatrix(),view),surface);[m
+[32m+[m[32m            Vector2f screen = GraphicConveyor.vertexToVec2(projected,512,512);[m
+[32m+[m[32m            Vector4f normal = MatrixMath.multiply(view,new Vector4f(0,0,1,0));[m
+[32m+[m[32m            int expected = Light.CAMERA_DIRECTIONAL.shade(TextureSampler.sample(texture,.3f,.4f),new Vector3f(normal.x(),normal.y(),normal.z()));[m
+[32m+[m[32m            assertEquals(expected,frame.colorAt((int)screen.x(),(int)screen.y()),"Camera angle " + angle);[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Test void repeatedRejectedImportsLeaveNoTemporaryFiles() throws Exception {[m
+[32m+[m[32m        String previous = System.getProperty("java.io.tmpdir");[m
+[32m+[m[32m        try {[m
+[32m+[m[32m            System.setProperty("java.io.tmpdir",directory.toString());[m
+[32m+[m[32m            for (int i=0;i<100;i++) assertThrows(com.cgengine.obj_io.reader.ObjReaderException.class,[m
+[32m+[m[32m                    () -> ObjReader.read("v 0 0 0\nf 1 2 99"));[m
+[32m+[m[32m            try (var files=Files.list(directory)) { assertEquals(0,files.count()); }[m
+[32m+[m[32m        } finally { System.setProperty("java.io.tmpdir",previous); }[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/com/cgengine/FxRenderBenchmarkTest.java b/tests/com/cgengine/FxRenderBenchmarkTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..beded4b[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/FxRenderBenchmarkTest.java[m
+[36m@@ -0,0 +1,95 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m
+[32m+[m[32mimport com.cgengine.math.Vector2f;[m
+[32m+[m[32mimport com.cgengine.math.Vector3f;[m
+[32m+[m[32mimport com.cgengine.model.Model;[m
+[32m+[m[32mimport com.cgengine.obj_io.writer.ObjWriter;[m
+[32m+[m[32mimport com.cgengine.performance.RenderBenchmarkTest;[m
+[32m+[m[32mimport com.cgengine.render_engine.Camera;[m
+[32m+[m[32mimport com.cgengine.render_engine.RenderMetrics;[m
+[32m+[m[32mimport com.cgengine.render_engine.Texture2D;[m
+[32m+[m[32mimport javafx.application.Platform;[m
+[32m+[m[32mimport javafx.scene.canvas.Canvas;[m
+[32m+[m[32mimport javafx.scene.control.ListView;[m
+[32m+[m[32mimport org.junit.jupiter.api.Test;[m
+[32m+[m[32mimport org.junit.jupiter.api.io.TempDir;[m
+[32m+[m[32mimport java.nio.file.Path;[m
+[32m+[m[32mimport java.util.ArrayList;[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m[32mimport java.util.concurrent.CompletableFuture;[m
+[32m+[m[32mimport java.util.concurrent.TimeUnit;[m
+[32m+[m[32mimport static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m
+[32m+[m[32m/** Same controller/Canvas path as production, one frame per queued FX action. */[m
+[32m+[m[32mclass FxRenderBenchmarkTest {[m
+[32m+[m[32m    @TempDir Path directory;[m
+[32m+[m[32m    @Test void texturedCanvasMeetsD01WithQueuedSelectionActions() throws Exception {[m
+[32m+[m[32m        Model source = RenderBenchmarkTest.scene();[m
+[32m+[m[32m        source.textureVertices.addAll(List.of(new Vector2f(0,0), new Vector2f(1,0), new Vector2f(0,1)));[m
+[32m+[m[32m        source.polygons.forEach(p -> p.setTextureVertexIndices(new ArrayList<>(List.of(0,1,2))));[m
+[32m+[m[32m        Path fixture = directory.resolve("benchmark.obj"); new ObjWriter().write(source, fixture.toString());[m
+[32m+[m[32m        CompletableFuture<Void> finished = new CompletableFuture<>();[m
+[32m+[m[32m        FxTestSupport.run(() -> {[m
+[32m+[m[32m            UiRegressionTest.View view = new UiRegressionTest.View();[m
+[32m+[m[32m            try {[m
+[32m+[m[32m                view.load(fixture); view.controller.dispose();[m
+[32m+[m[32m                view.selected().setTexture(new Texture2D(2,2,new int[]{0xFFFF0000,0xFF00FF00,0xFF0000FF,0xFFFFFFFF}));[m
+[32m+[m[32m                view.controller.addCamera(null);[m
+[32m+[m[32m                ListView<Camera> cameras = view.control("listViewCameras");[m
+[32m+[m[32m                for (Camera camera : cameras.getItems()) {[m
+[32m+[m[32m                    camera.moveDistance(-95); camera.setRotation(new Vector2f(0,(float)Math.PI/2));[m
+[32m+[m[32m                }[m
+[32m+[m[32m                Canvas canvas = view.control("canvas"); canvas.setWidth(1280); canvas.setHeight(720);[m
+[32m+[m[32m                new Runner(view, cameras, finished).run();[m
+[32m+[m[32m            } catch (Throwable failure) { view.close(); finished.completeExceptionally(failure); }[m
+[32m+[m[32m        });[m
+[32m+[m[32m        finished.get(6, TimeUnit.MINUTES);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    static final class Runner implements Runnable {[m
+[32m+[m[32m        final UiRegressionTest.View view;[m
+[32m+[m[32m        final ListView<Camera> cameras;[m
+[32m+[m[32m        final CompletableFuture<Void> finished;[m
+[32m+[m[32m        RenderMetrics metrics = new RenderMetrics(900);[m
+[32m+[m[32m        int run, frame = -150, actions;[m
+[32m+[m[32m        long heapBefore;[m
+[32m+[m[32m        Runner(UiRegressionTest.View view, ListView<Camera> cameras, CompletableFuture<Void> finished) {[m
+[32m+[m[32m            this.view=view; this.cameras=cameras; this.finished=finished;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        @Override public void run() {[m
+[32m+[m[32m            try {[m
+[32m+[m[32m                if (run == 3 && frame == 0) { System.gc(); heapBefore = usedHeap(); }[m
+[32m+[m[32m                long started = System.nanoTime();[m
+[32m+[m[32m                view.controller.renderFrame();[m
+[32m+[m[32m                long duration = System.nanoTime() - started;[m
+[32m+[m[32m                if (run < 3 && frame >= 0) {[m
+[32m+[m[32m                    metrics.recordNanos(duration);[m
+[32m+[m[32m                    if (frame % 90 == 0) Platform.runLater(() -> {[m
+[32m+[m[32m                        cameras.getSelectionModel().select(1-cameras.getSelectionModel().getSelectedIndex());[m
+[32m+[m[32m                        actions++;[m
+[32m+[m[32m                    });[m
+[32m+[m[32m                }[m
+[32m+[m[32m                frame++;[m
+[32m+[m[32m                if (run < 3 && frame == 900) {[m
+[32m+[m[32m                    System.out.printf(java.util.Locale.ROOT,[m
+[32m+[m[32m                            "D-01 Canvas+texture run %d: mean=%.3fms p95=%.3fms max=%.3fms actions=%d%n",[m
+[32m+[m[32m                            run+1,metrics.meanMillis(),metrics.p95Millis(),metrics.maxMillis(),actions);[m
+[32m+[m[32m                    assertTrue(metrics.meanMillis() <= 33.33, "Canvas mean");[m
+[32m+[m[32m                    assertTrue(metrics.p95Millis() <= 50, "Canvas p95");[m
+[32m+[m[32m                    assertTrue(metrics.maxMillis() < 200, "Canvas max");[m
+[32m+[m[32m                    assertEquals(10,actions,"Queued camera selections");[m
+[32m+[m[32m                    run++; frame=-150; actions=0; metrics=new RenderMetrics(900);[m
+[32m+[m[32m                } else if (run == 3 && frame == 1800) {[m
+[32m+[m[32m                    System.gc(); long growth=usedHeap()-heapBefore;[m
+[32m+[m[32m                    System.out.printf("D-01 Canvas soak: heap growth=%d bytes; JDK=%s; OS=%s; CPU=%s%n",[m
+[32m+[m[32m                            growth,System.getProperty("java.version"),System.getProperty("os.name"),System.getenv("PROCESSOR_IDENTIFIER"));[m
+[32m+[m[32m                    assertTrue(growth <= 64L*1024*1024,"Canvas heap growth");[m
+[32m+[m[32m                    assertNull(view.controller.error);[m
+[32m+[m[32m                    view.close(); finished.complete(null); return;[m
+[32m+[m[32m                }[m
+[32m+[m[32m                Platform.runLater(this);[m
+[32m+[m[32m            } catch (Throwable failure) { view.close(); finished.completeExceptionally(failure); }[m
+[32m+[m[32m        }[m
+[32m+[m[32m        static long usedHeap() { return Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory(); }[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/com/cgengine/FxTestSupport.java b/tests/com/cgengine/FxTestSupport.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..fb269d2[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/FxTestSupport.java[m
+[36m@@ -0,0 +1,17 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m
+[32m+[m[32mimport javafx.application.Platform;[m
+[32m+[m[32mimport java.util.concurrent.FutureTask;[m
+[32m+[m[32mimport java.util.concurrent.TimeUnit;[m
+[32m+[m
+[32m+[m[32mfinal class FxTestSupport {[m
+[32m+[m[32m    static {[m
+[32m+[m[32m        Platform.startup(() -> Platform.setImplicitExit(false));[m
+[32m+[m[32m    }[m
+[32m+[m[32m    static void run(ThrowingRunnable action) throws Exception {[m
+[32m+[m[32m        FutureTask<Void> task = new FutureTask<>(() -> { action.run(); return null; });[m
+[32m+[m[32m        Platform.runLater(task);[m
+[32m+[m[32m        task.get(60, TimeUnit.SECONDS);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    interface ThrowingRunnable { void run() throws Exception; }[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/com/cgengine/PackagedSmoke.java b/tests/com/cgengine/PackagedSmoke.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..96d8a7c[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/PackagedSmoke.java[m
+[36m@@ -0,0 +1,67 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m
+[32m+[m[32mimport com.cgengine.math.Vector2f;[m
+[32m+[m[32mimport com.cgengine.math.Vector3f;[m
+[32m+[m[32mimport com.cgengine.obj_io.reader.ObjReader;[m
+[32m+[m[32mimport com.cgengine.render_engine.Camera;[m
+[32m+[m[32mimport com.cgengine.render_engine.RenderEngine;[m
+[32m+[m[32mimport com.cgengine.render_engine.PolygonFiller;[m
+[32m+[m[32mimport com.cgengine.render_engine.Rasterization.FrameBuffer;[m
+[32m+[m[32mimport javafx.application.Platform;[m
+[32m+[m[32mimport javafx.stage.Stage;[m
+[32m+[m[32mimport javafx.scene.canvas.Canvas;[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m[32mimport java.nio.file.Files;[m
+[32m+[m[32mimport java.nio.file.Path;[m
+[32m+[m[32mimport java.util.concurrent.CountDownLatch;[m
+[32m+[m[32mimport java.util.concurrent.TimeUnit;[m
+[32m+[m[32mimport java.util.concurrent.atomic.AtomicReference;[m
+[32m+[m
+[32m+[m[32m/** Executed in a separate JVM with ONLY the distribution jar and this probe. */[m
+[32m+[m[32mpublic final class PackagedSmoke {[m
+[32m+[m[32m    public static void main(String[] args) throws Exception {[m
+[32m+[m[32m        CountDownLatch finished = new CountDownLatch(1);[m
+[32m+[m[32m        AtomicReference<Throwable> failure = new AtomicReference<>();[m
+[32m+[m[32m        Platform.startup(() -> {[m
+[32m+[m[32m            try {[m
+[32m+[m[32m                Stage stage = new Stage();[m
+[32m+[m[32m                new Simple3DViewer().start(stage);[m
+[32m+[m[32m                if (!stage.isShowing() || !"CGEngine".equals(stage.getTitle()))[m
+[32m+[m[32m                    throw new AssertionError("Application window did not open");[m
+[32m+[m[32m                var model = ObjReader.read(args.length == 0[m
+[32m+[m[32m                        ? "v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3\n"[m
+[32m+[m[32m                        : Files.readString(Path.of(args[0])));[m
+[32m+[m[32m                float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;[m
+[32m+[m[32m                float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;[m
+[32m+[m[32m                for (Vector3f vertex : model.vertices) {[m
+[32m+[m[32m                    minX = Math.min(minX, vertex.x()); maxX = Math.max(maxX, vertex.x());[m
+[32m+[m[32m                    minY = Math.min(minY, vertex.y()); maxY = Math.max(maxY, vertex.y());[m
+[32m+[m[32m                    minZ = Math.min(minZ, vertex.z()); maxZ = Math.max(maxZ, vertex.z());[m
+[32m+[m[32m                }[m
+[32m+[m[32m                Vector3f center = new Vector3f((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);[m
+[32m+[m[32m                float distance = Math.max(maxX - minX, Math.max(maxY - minY, maxZ - minZ)) * 3 + .1f;[m
+[32m+[m[32m                var camera = new Camera(new Vector2f(0, (float) Math.PI / 2), distance,[m
+[32m+[m[32m                        center, 1, 1, .01f, distance * 10);[m
+[32m+[m[32m                FrameBuffer frame = new FrameBuffer(64, 64);[m
+[32m+[m[32m                RenderEngine.renderFrame(frame, camera, List.of(model));[m
+[32m+[m[32m                int visiblePixel = -1;[m
+[32m+[m[32m                for (int i = 0; i < frame.colors().length; i++) {[m
+[32m+[m[32m                    if (frame.colors()[i] != 0) { visiblePixel = i; break; }[m
+[32m+[m[32m                }[m
+[32m+[m[32m                if (visiblePixel < 0) throw new AssertionError("Smoke OBJ did not render");[m
+[32m+[m[32m                Canvas canvas = (Canvas) stage.getScene().lookup("#canvas");[m
+[32m+[m[32m                PolygonFiller.publish(canvas.getGraphicsContext2D(), frame);[m
+[32m+[m[32m                int x = visiblePixel % frame.width(), y = visiblePixel / frame.width();[m
+[32m+[m[32m                if (canvas.snapshot(null, null).getPixelReader().getArgb(x, y) != frame.colorAt(x, y))[m
+[32m+[m[32m                    throw new AssertionError("Canvas upload failed");[m
+[32m+[m[32m                stage.close();[m
+[32m+[m[32m            } catch (Throwable error) { failure.set(error); }[m
+[32m+[m[32m            finally { finished.countDown(); }[m
+[32m+[m[32m        });[m
+[32m+[m[32m        if (!finished.await(30, TimeUnit.SECONDS)) throw new AssertionError("JavaFX startup timed out");[m
+[32m+[m[32m        Platform.exit();[m
+[32m+[m[32m        if (failure.get() != null) throw new AssertionError("Packaged smoke failed", failure.get());[m
+[32m+[m[32m        System.out.println("PACKAGED SMOKE PASSED: " + (args.length == 0 ? "triangle" : args[0])[m
+[32m+[m[32m                + "; FXML, Stage, OBJ, CPU pixels, Canvas");[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/com/cgengine/UiBoundaryTest.java b/tests/com/cgengine/UiBoundaryTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..0841ff4[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/UiBoundaryTest.java[m
+[36m@@ -0,0 +1,3 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m[32mimport com.cgengine.math.affine.Scaling; import com.cgengine.model.Model; import com.cgengine.obj_io.writer.*; import org.junit.jupiter.api.Test; import static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m[32mclass UiBoundaryTest { @Test void invalidScaleIsRejectedBeforeMatrixCreation(){assertThrows(IllegalArgumentException.class,()->new Scaling(0,1,1));assertThrows(IllegalArgumentException.class,()->new Scaling(-1,1,1));assertThrows(IllegalArgumentException.class,()->new Scaling(Float.NaN,1,1));assertThrows(IllegalArgumentException.class,()->new Scaling(Float.POSITIVE_INFINITY,1,1));} @Test void writerReportsUnavailableOutputPath(){assertThrows(ObjWriteException.class,()->new ObjWriter().write(new Model(),"\0"));} }[m
+[1mdiff --git a/tests/com/cgengine/UiRegressionTest.java b/tests/com/cgengine/UiRegressionTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..bc6c063[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/UiRegressionTest.java[m
+[36m@@ -0,0 +1,166 @@[m
+[32m+[m[32mpackage com.cgengine;[m
+[32m+[m
+[32m+[m[32mimport com.cgengine.math.Vector3f;[m
+[32m+[m[32mimport com.cgengine.model.Model;[m
+[32m+[m[32mimport com.cgengine.model.ModelValidator;[m
+[32m+[m[32mimport com.cgengine.obj_io.reader.ObjReader;[m
+[32m+[m[32mimport com.cgengine.render_engine.Camera;[m
+[32m+[m[32mimport com.cgengine.render_engine.ColorRgb;[m
+[32m+[m[32mimport javafx.fxml.FXMLLoader;[m
+[32m+[m[32mimport javafx.scene.Scene;[m
+[32m+[m[32mimport javafx.scene.Parent;[m
+[32m+[m[32mimport javafx.scene.control.*;[m
+[32m+[m[32mimport javafx.scene.canvas.Canvas;[m
+[32m+[m[32mimport javafx.stage.Stage;[m
+[32m+[m[32mimport org.junit.jupiter.api.Test;[m
+[32m+[m[32mimport org.junit.jupiter.api.io.TempDir;[m
+[32m+[m[32mimport java.io.File;[m
+[32m+[m[32mimport java.nio.file.Files;[m
+[32m+[m[32mimport java.nio.file.Path;[m
+[32m+[m[32mimport java.util.ArrayList;[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m[32mimport static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m
+[32m+[m[32m@SuppressWarnings("unchecked")[m
+[32m+[m[32mclass UiRegressionTest {[m
+[32m+[m[32m    @TempDir Path directory;[m
+[32m+[m[32m    static final String OBJ = "v -1 -1 0\nv 1 -1 0\nv 0 1 0\nv 1 1 0\n"[m
+[32m+[m[32m            + "vt 0 0\nvt 1 0\nvt 0 1\nvt 1 1\nf 1/1 2/2 3/3\nf 2/2 4/4 3/3\n";[m
+[32m+[m
+[32m+[m[32m    static class Controller extends GuiController {[m
+[32m+[m[32m        File file;[m
+[32m+[m[32m        String error, info;[m
+[32m+[m[32m        @Override File chooseModelFile(boolean save) { return file; }[m
+[32m+[m[32m        @Override File chooseTextureFile() { return file; }[m
+[32m+[m[32m        @Override void showError(String title, String content) { error = title + ": " + content; }[m
+[32m+[m[32m        @Override void showInfo(String title, String content) { info = title + ": " + content; }[m
+[32m+[m[32m    }[m
+[32m+[m[32m    static class View implements AutoCloseable {[m
+[32m+[m[32m        final Controller controller = new Controller();[m
+[32m+[m[32m        final Stage stage = new Stage();[m
+[32m+[m[32m        final Parent root;[m
+[32m+[m[32m        final java.util.Map<String, Object> namespace;[m
+[32m+[m[32m        View() throws Exception {[m
+[32m+[m[32m            FXMLLoader loader = new FXMLLoader(Simple3DViewer.class.getResource("fxml/gui.fxml"));[m
+[32m+[m[32m            loader.setControllerFactory(type -> controller);[m
+[32m+[m[32m            root = loader.load();[m
+[32m+[m[32m            namespace = loader.getNamespace();[m
+[32m+[m[32m            stage.setScene(new Scene(root)); stage.show(); root.applyCss(); root.layout();[m
+[32m+[m[32m        }[m
+[32m+[m[32m        @SuppressWarnings("unchecked") <T> T control(String id) { return (T) namespace.get(id); }[m
+[32m+[m[32m        void text(String id, String value) { ((TextField) control(id)).setText(value); }[m
+[32m+[m[32m        void button(String label) {[m
+[32m+[m[32m            Accordion accordion = (Accordion) root.lookup(".accordion");[m
+[32m+[m[32m            Button button = null;[m
+[32m+[m[32m            for (TitledPane pane : accordion.getPanes()) {[m
+[32m+[m[32m                button = pane.getContent().lookupAll(".button").stream()[m
+[32m+[m[32m                        .filter(n -> ((Button)n).getText().equals(label)).map(n -> (Button)n).findFirst().orElse(null);[m
+[32m+[m[32m                if (button != null) { accordion.setExpandedPane(pane); root.applyCss(); root.layout(); break; }[m
+[32m+[m[32m            }[m
+[32m+[m[32m            if (button == null) throw new AssertionError("Missing FXML button: " + label);[m
+[32m+[m[32m            if (button.getOnAction() != null) button.fire(); else button.getOnMouseClicked().handle(null);[m
+[32m+[m[32m        }[m
+[32m+[m[32m        void menu(String label) {[m
+[32m+[m[32m            MenuBar bar = (MenuBar) root.lookup(".menu-bar");[m
+[32m+[m[32m            bar.getMenus().stream().flatMap(m -> m.getItems().stream()).filter(i -> i.getText().equals(label))[m
+[32m+[m[32m                    .findFirst().orElseThrow().fire();[m
+[32m+[m[32m        }[m
+[32m+[m[32m        ListView<Model> models() { return control("listViewModels"); }[m
+[32m+[m[32m        Model selected() { return models().getSelectionModel().getSelectedItem(); }[m
+[32m+[m[32m        void load(Path file) { controller.file = file.toFile(); menu("Load Model"); assertNull(controller.error); }[m
+[32m+[m[32m        @Override public void close() { controller.dispose(); stage.close(); }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Test void realFxmlSupportsLoadSelectionColorTransformDeletionAndSave() throws Exception {[m
+[32m+[m[32m        Path input = directory.resolve("\u0442\u0440\u0435\u0443\u0433\u043e\u043b\u044c\u043d\u0438\u043a\u0438.obj"); Files.writeString(input, OBJ);[m
+[32m+[m[32m        Path output = directory.resolve("\u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442.obj");[m
+[32m+[m[32m        FxTestSupport.run(() -> {[m
+[32m+[m[32m            try (View v = new View()) {[m
+[32m+[m[32m                v.load(input); Model a = v.selected(); List<Vector3f> original = new ArrayList<>(a.vertices);[m
+[32m+[m[32m                v.load(input); Model b = v.selected();[m
+[32m+[m[32m                v.text("inputForModelMoving", "1 2 3"); v.text("inputForModelRotation", "0 0 90");[m
+[32m+[m[32m                v.text("inputForModelScaling", "2 3 4"); v.button("Apply transform");[m
+[32m+[m[32m                List<Vector3f> movedB = new ArrayList<>(b.vertices);[m
+[32m+[m[32m                assertNotEquals(original, movedB);[m
+[32m+[m[32m                v.models().getSelectionModel().select(0);[m
+[32m+[m[32m                assertEquals("0.0 0.0 0.0", ((TextField)v.control("inputForModelMoving")).getText());[m
+[32m+[m[32m                v.text("inputForModelMoving", "3 0 0"); v.button("Apply transform"); v.button("Reset");[m
+[32m+[m[32m                assertEquals(original, a.vertices); assertEquals(movedB, b.vertices);[m
+[32m+[m[32m                v.text("polygonIndices", "0, 0"); ((ComboBox<String>)v.control("colorPicker")).setValue("Red");[m
+[32m+[m[32m                v.button("Apply"); assertEquals(ColorRgb.RED, a.polygons.get(0).getBaseColor());[m
+[32m+[m[32m                assertEquals(ColorRgb.WHITE, a.polygons.get(1).getBaseColor());[m
+[32m+[m[32m                v.button("All"); assertEquals("0, 1", ((TextField)v.control("polygonIndices")).getText());[m
+[32m+[m[32m                v.controller.resetPolygonColor(null);[m
+[32m+[m[32m                assertTrue(a.polygons.stream().allMatch(p -> p.getBaseColor() == ColorRgb.WHITE));[m
+[32m+[m[32m                v.text("polygonIndices", "0"); v.button("Delete selected polygons");[m
+[32m+[m[32m                assertEquals(1, a.polygons.size()); assertEquals(original, a.vertices); ModelValidator.validate(a);[m
+[32m+[m[32m                v.controller.file = output.toFile(); v.menu("Save Model"); assertNotNull(v.controller.info);[m
+[32m+[m[32m                assertEquals(1, ObjReader.read(Files.readString(output)).polygons.size());[m
+[32m+[m[32m                v.text("VerticesToRemove", "0"); v.button("OK");[m
+[32m+[m[32m                assertEquals(3, v.selected().vertices.size()); assertEquals(1, v.selected().polygons.size());[m
+[32m+[m[32m                v.controller.removeModel(null); assertSame(b, v.selected());[m
+[32m+[m[32m                v.controller.removeModel(null); assertTrue(v.models().getItems().isEmpty());[m
+[32m+[m[32m                v.controller.renderFrame(); assertNull(v.controller.error);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Test void errorsAndCancelledPickersPreserveSceneAndRenderLoop() throws Exception {[m
+[32m+[m[32m        Path valid = directory.resolve("valid.obj"); Files.writeString(valid, OBJ);[m
+[32m+[m[32m        FxTestSupport.run(() -> {[m
+[32m+[m[32m            try (View v = new View()) {[m
+[32m+[m[32m                v.controller.resetPolygonColor(null); assertNotNull(v.controller.error); v.controller.error = null;[m
+[32m+[m[32m                v.load(valid); Model model = v.selected(); List<Vector3f> original = new ArrayList<>(model.vertices);[m
+[32m+[m[32m                for (String value : List.of("", "1 2", "1 2 3 4", "NaN 1 1", "Infinity 1 1", "0 1 1", "-1 1 1", "1,5 1 1")) {[m
+[32m+[m[32m                    v.controller.error = null; v.text("inputForModelScaling", value); v.button("Apply transform");[m
+[32m+[m[32m                    assertNotNull(v.controller.error, value); assertEquals(original, model.vertices); v.controller.renderFrame();[m
+[32m+[m[32m                }[m
+[32m+[m[32m                for (String value : List.of("", "0,", "-1", "0, 99", "word")) {[m
+[32m+[m[32m                    v.controller.error = null; v.text("polygonIndices", value); v.controller.resetPolygonColor(null);[m
+[32m+[m[32m                    assertNotNull(v.controller.error, value); assertEquals(2, model.polygons.size());[m
+[32m+[m[32m                }[m
+[32m+[m[32m                for (String bad : List.of("", "v nope 0 0", "v 0 0 0\nf 1 2 3", OBJ + "f 1 2")) {[m
+[32m+[m[32m                    Path file = directory.resolve("invalid.obj"); Files.writeString(file, bad);[m
+[32m+[m[32m                    v.controller.file = file.toFile(); v.controller.error = null; v.menu("Load Model");[m
+[32m+[m[32m                    assertNotNull(v.controller.error); assertEquals(1, v.models().getItems().size()); assertSame(model, v.selected());[m
+[32m+[m[32m                }[m
+[32m+[m[32m                v.controller.file = directory.resolve("missing/output.obj").toFile(); v.controller.error = null;[m
+[32m+[m[32m                v.menu("Save Model"); assertNotNull(v.controller.error);[m
+[32m+[m[32m                v.controller.file = null; v.controller.error = null; v.menu("Load Model"); v.menu("Save Model");[m
+[32m+[m[32m                assertNull(v.controller.error); assertEquals(1, v.models().getItems().size());[m
+[32m+[m[32m                for (int i = 0; i < 100; i++) v.controller.handleCameraForward(null);[m
+[32m+[m[32m                v.controller.renderFrame();[m
+[32m+[m[32m                v.controller.addCamera(null); v.controller.removeCamera(null);[m
+[32m+[m[32m                assertEquals(1, ((ListView<Camera>)v.control("listViewCameras")).getItems().size());[m
+[32m+[m[32m                v.controller.removeCamera(null); assertNotNull(v.controller.error); v.controller.renderFrame();[m
+[32m+[m[32m            }[m
+[32m+[m[32m        });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @Test void textureFailuresAreAtomicAndSeparateRemovalKeepsUvAndColors() throws Exception {[m
+[32m+[m[32m        Path input = directory.resolve("model.obj"); Files.writeString(input, OBJ);[m
+[32m+[m[32m        java.awt.image.BufferedImage pixels = new java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_RGB);[m
+[32m+[m[32m        pixels.setRGB(0, 0, 0xFF0000); pixels.setRGB(1, 0, 0x00FF00);[m
+[32m+[m[32m        Path png = directory.resolve("texture.png"); javax.imageio.ImageIO.write(pixels, "png", png.toFile());[m
+[32m+[m[32m        Path oversized = directory.resolve("large.png");[m
+[32m+[m[32m        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(4097, 1, 1), "png", oversized.toFile());[m
+[32m+[m[32m        Path corrupt = directory.resolve("bad.png"); Files.writeString(corrupt, "invalid image");[m
+[32m+[m[32m        FxTestSupport.run(() -> {[m
+[32m+[m[32m            try (View v = new View()) {[m
+[32m+[m[32m                v.load(input); Model model = v.selected();[m
+[32m+[m[32m                v.controller.file = png.toFile(); v.button("Texture"); assertNotNull(model.getTexture());[m
+[32m+[m[32m                var texture = model.getTexture();[m
+[32m+[m[32m                for (Path bad : List.of(oversized, corrupt, directory.resolve("missing.png"), directory.resolve("bad.gif"))) {[m
+[32m+[m[32m                    v.controller.file = bad.toFile(); v.controller.error = null; v.button("Texture");[m
+[32m+[m[32m                    assertNotNull(v.controller.error); assertSame(texture, model.getTexture()); v.controller.renderFrame();[m
+[32m+[m[32m                }[m
+[32m+[m[32m                v.text("polygonIndices", "0"); v.controller.resetPolygonColor(null); assertSame(texture, model.getTexture());[m
+[32m+[m[32m                v.button("Clear texture"); assertNull(model.getTexture()); assertEquals(4, model.textureVertices.size());[m
+[32m+[m[32m                assertEquals(ColorRgb.WHITE, model.polygons.getFirst().getBaseColor());[m
+[32m+[m[32m                model.polygons.forEach(p -> p.setTextureVertexIndices(new ArrayList<>()));[m
+[32m+[m[32m                v.controller.error = null; v.button("Texture"); assertNotNull(v.controller.error);[m
+[32m+[m[32m                v.controller.renderFrame();[m
+[32m+[m[32m            }[m
+[32m+[m[32m        });[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/com/cgengine/VertexDelete/EraserTest.java b/tests/com/cgengine/VertexDelete/EraserTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..0706409[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/VertexDelete/EraserTest.java[m
+[36m@@ -0,0 +1,3 @@[m
+[32m+[m[32mpackage com.cgengine.VertexDelete;[m
+[32m+[m[32mimport com.cgengine.math.*; import com.cgengine.model.*; import com.cgengine.render_engine.*; import org.junit.jupiter.api.Test; import java.util.*; import static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m[32mclass EraserTest { private static Model model(){Model m=new Model();m.vertices.addAll(List.of(new Vector3f(0,0,0),new Vector3f(1,0,0),new Vector3f(0,1,0),new Vector3f(1,1,0)));m.textureVertices.addAll(List.of(new Vector2f(0,0),new Vector2f(1,0),new Vector2f(0,1),new Vector2f(1,1)));for(int[] i:List.of(new int[]{0,1,2},new int[]{1,3,2})){Polygon p=new Polygon();p.setVertexIndices(new ArrayList<>(List.of(i[0],i[1],i[2])));p.setTextureVertexIndices(new ArrayList<>(List.of(i[0],i[1],i[2])));p.setBaseColor(ColorRgb.BLUE);m.polygons.add(p);}m.computeNormals();m.setTexture(new Texture2D(1,1,new int[]{0xFFFFFFFF}));return m;} @Test void removesAffectedFacesAndPreservesAttributes(){Model s=model(),r=Eraser.vertexDelete(s,List.of(0),false,false,false,false);ModelValidator.validate(r);assertEquals(3,r.vertices.size());assertEquals(1,r.polygons.size());assertEquals(ColorRgb.BLUE,r.polygons.getFirst().getBaseColor());assertSame(s.getTexture(),r.getTexture());assertEquals(2,s.polygons.size());} @Test void supportsNoUvNoNormalsAndDeletion(){Model s=model();for(Polygon p:s.polygons){p.setTextureVertexIndices(new ArrayList<>());p.setNormalIndices(new ArrayList<>());}s.textureVertices.clear();s.normals.clear();Model r=Eraser.vertexDelete(s,List.of(0),true,true,true,false);ModelValidator.validate(r);assertTrue(r.textureVertices.isEmpty());assertTrue(r.normals.isEmpty());} @Test void rejectsDuplicateAndOutOfRange(){Model s=model();assertThrows(IllegalArgumentException.class,()->Eraser.vertexDelete(s,List.of(1,1),false,false,false,false));assertThrows(IllegalArgumentException.class,()->Eraser.vertexDelete(s,List.of(9),false,false,false,false));assertDoesNotThrow(()->Eraser.vertexDelete(s,List.of(),false,false,false,false));} @Test void removePolygonsProducesValidEmptyModel(){Model r=Eraser.vertexDelete(model(),List.of(0),false,false,false,true);assertTrue(r.polygons.isEmpty());ModelValidator.validate(r);} }[m
+[1mdiff --git a/tests/com/cgengine/math/affine/ModelTransformTest.java b/tests/com/cgengine/math/affine/ModelTransformTest.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..ab5eefc[m
+[1m--- /dev/null[m
+[1m+++ b/tests/com/cgengine/math/affine/ModelTransformTest.java[m
+[36m@@ -0,0 +1,3 @@[m
+[32m+[m[32mpackage com.cgengine.math.affine;[m
+[32m+[m[32mimport com.cgengine.math.Vector3f; import com.cgengine.model.*; import org.junit.jupiter.api.Test; import java.util.*; import static org.junit.jupiter.api.Assertions.*;[m
+[32m+[m[32mclass ModelTransformTest { private static Model model(){Model m=new Model();m.vertices.addAll(List.of(new Vector3f(1,0,0),new Vector3f(0,1,0),new Vector3f(0,0,1)));Polygon p=new Polygon();p.setVertexIndices(new ArrayList<>(List.of(0,1,2)));m.polygons.add(p);m.computeNormals();return m;} @Test void resetRestoresOnlyTransformedModelAfterMultipleTrs(){Model a=model(),b=model();List<Vector3f> original=new ArrayList<>(a.vertices);a.applyTransformation(new Transformation(new Translator(2,3,4),Rotator.degrees(90,Rotator.Axis.Z),new Scaling(2,3,4)));a.applyTransformation(new Transformation(new Translator(-1,2,0)));a.resetTransformation();assertEquals(original,a.vertices);assertEquals(original,b.vertices);} @Test void floatDegreesAreConvertedCorrectly(){Model m=model();m.applyTransformation(new Transformation(Rotator.degrees(90,Rotator.Axis.Z)));assertEquals(0,m.vertices.getFirst().x(),.00001f);assertEquals(1,m.vertices.getFirst().y(),.00001f);} }[m
+[1mdiff --git a/tests/com/cgengine/model/SceneStateTest.java b/tests/com/cgengine/model/SceneStateTest.java[m
+[1mindex 5a85014..a5f9ddc 100644[m
+[1m--- a/tests/com/cgengine/model/SceneStateTest.java[m
+[1m+++ b/tests/com/cgengine/model/SceneStateTest.java[m
+[36m@@ -2,5 +2,5 @@[m [mpackage com.cgengine.model;[m
+ import org.junit.jupiter.api.Test;[m
+ import static org.junit.jupiter.api.Assertions.*;[m
+ class SceneStateTest {[m
+[31m- @Test void removalKeepsSelectionValidIncludingEmptyScene(){SceneState scene=new SceneState();Model a=new Model(),b=new Model();scene.addModel(a);scene.addModel(b);assertTrue(scene.select(a));assertTrue(scene.removeModel(b));assertSame(a,scene.selectedModel());assertTrue(scene.removeModel(a));assertNull(scene.selectedModel());assertTrue(scene.models().isEmpty());scene.addModel(b);assertSame(b,scene.selectedModel());}[m
+[32m+[m[32m @Test void removalKeepsSelectionValidIncludingEmptyScene(){SceneState scene=new SceneState();Model a=new Model(),b=new Model();scene.addModel(a);scene.addModel(b);assertFalse(scene.select(new Model()));assertTrue(scene.select(a));assertTrue(scene.removeModel(b));assertSame(a,scene.selectedModel());assertSame(a,scene.models().getFirst());assertTrue(scene.removeModel(a));assertNull(scene.selectedModel());assertTrue(scene.models().isEmpty());scene.addModel(b);assertSame(b,scene.selectedModel());}[m
+ }[m
+[1mdiff --git a/tests/com/cgengine/obj_io/ObjIoTest.java b/tests/com/cgengine/obj_io/ObjIoTest.java[m
+[1mindex 20e3851..84ba69d 100644[m
+[1m--- a/tests/com/cgengine/obj_io/ObjIoTest.java[m
+[1m+++ b/tests/com/cgengine/obj_io/ObjIoTest.java[m
+[36m@@ -39,11 +39,31 @@[m [mclass ObjIoTest {[m
+     @Test void reportsLineForInvalidInput() {[m
+         assertLine("", 0);[m
+         assertLine(HEAD + "f 1 2 99", 4);[m
+[32m+[m[32m        assertLine(HEAD + "f 1 2", 4);[m
+         assertLine(HEAD + "f 1 2 3 1", 4);[m
+         assertLine("v nope 0 0", 1);[m
+         assertLine(HEAD + "f -1 2 3", 4);[m
+     }[m
+ [m
+[32m+[m[32m    @Test void metadataAndConcavePolygonAreTriangulatedWithAlignedUv() throws Exception {[m
+[32m+[m[32m        String input = "mtllib ignored.mtl\no Named object\ng Part\ns 1\n"[m
+[32m+[m[32m                + "v 0 0 0\nv 3 0 0\nv 3 3 0\nv 1 1 0\nv 0 3 0\n"[m
+[32m+[m[32m                + "vt 0 0\nvt 3 0\nvt 3 3\nvt 1 1\nvt 0 3\n"[m
+[32m+[m[32m                + "vn 0 0 1\nusemtl Material\nf 1/1/1 2/2/1 3/3/1 4/4/1 5/5/1\n";[m
+[32m+[m[32m        Model model = ObjReader.read(input);[m
+[32m+[m[32m        assertEquals(3, model.polygons.size());[m
+[32m+[m[32m        for (var face : model.polygons) {[m
+[32m+[m[32m            assertEquals(3, face.getVertexIndices().size());[m
+[32m+[m[32m            assertEquals(face.getVertexIndices(), face.getTextureVertexIndices());[m
+[32m+[m[32m            assertEquals(face.getVertexIndices(), face.getNormalIndices());[m
+[32m+[m[32m        }[m
+[32m+[m[32m        Path file = Files.createTempFile("cgengine-polygon-", ".obj");[m
+[32m+[m[32m        try {[m
+[32m+[m[32m            new ObjWriter().write(model, file.toString());[m
+[32m+[m[32m            assertEquals(model.polygons.size(), ObjReader.read(Files.readString(file)).polygons.size());[m
+[32m+[m[32m        } finally { Files.deleteIfExists(file); }[m
+[32m+[m[32m    }[m
+[32m+[m
+     @Test void writeFailureIsControlled() {[m
+         Model model = ObjReader.read(HEAD + "f 1 2 3");[m
+         assertThrows(ObjWriteException.class, () -> new ObjWriter().write(model, "\u0000invalid"));[m
+[1mdiff --git a/tests/com/cgengine/performance/RenderBenchmarkTest.java b/tests/com/cgengine/performance/RenderBenchmarkTest.java[m
+[1mindex ae38c16..3907774 100644[m
+[1m--- a/tests/com/cgengine/performance/RenderBenchmarkTest.java[m
+[1m+++ b/tests/com/cgengine/performance/RenderBenchmarkTest.java[m
+[36m@@ -16,17 +16,16 @@[m [mimport java.util.List;[m
+ import static org.junit.jupiter.api.Assertions.assertTrue;[m
+ [m
+ /** D-01 CPU benchmark. Its generated triangles intentionally cover only small screen areas. */[m
+[31m-class RenderBenchmarkTest {[m
+[32m+[m[32mpublic class RenderBenchmarkTest {[m
+     private static final int WIDTH = 1280, HEIGHT = 720, TRIANGLES = 10_000;[m
+ [m
+     @Test void meetsD01FrameAndHeapLimits() {[m
+         Model model = scene();[m
+         Camera camera = new Camera(new Vector2f(0, (float) Math.PI / 2), 5, new Vector3f(0, 0, 0), 1, (float) WIDTH / HEIGHT, .1f, 10);[m
+         FrameBuffer frameBuffer = new FrameBuffer(WIDTH, HEIGHT);[m
+[31m-        for (int i = 0; i < 150; i++) RenderEngine.renderFrame(frameBuffer, camera, List.of(model));[m
+[31m-        forceGc(); long heapBefore = usedHeap();[m
+         int runs = Integer.getInteger("cgengine.benchmark.runs", 3);[m
+         for (int run = 0; run < runs; run++) {[m
+[32m+[m[32m            for (int i = 0; i < 150; i++) RenderEngine.renderFrame(frameBuffer, camera, List.of(model));[m
+             RenderMetrics metrics = new RenderMetrics(900);[m
+             for (int frame = 0; frame < 900; frame++) {[m
+                 long started = System.nanoTime();[m
+[36m@@ -39,6 +38,7 @@[m [mclass RenderBenchmarkTest {[m
+             assertTrue(metrics.maxMillis() < 200, "maximum frame time");[m
+         }[m
+         if (Boolean.parseBoolean(System.getProperty("cgengine.benchmark.soak", "true"))) {[m
+[32m+[m[32m            forceGc(); long heapBefore = usedHeap();[m
+             for (int frame = 0; frame < 1_800; frame++) RenderEngine.renderFrame(frameBuffer, camera, List.of(model));[m
+             forceGc(); long growth = usedHeap() - heapBefore;[m
+             System.out.printf("D-01 environment: JDK=%s; OS=%s; processors=%d; maxHeap=%d MiB; heap growth=%d MiB%n", System.getProperty("java.version"), System.getProperty("os.name"), Runtime.getRuntime().availableProcessors(), Runtime.getRuntime().maxMemory() / (1024 * 1024), growth / (1024 * 1024));[m
+[36m@@ -46,7 +46,7 @@[m [mclass RenderBenchmarkTest {[m
+         }[m
+     }[m
+ [m
+[31m-    private static Model scene() {[m
+[32m+[m[32m    public static Model scene() {[m
+         Model model = new Model();[m
+         for (int index = 0; index < TRIANGLES; index++) {[m
+             int column = index % 100, row = index / 100;[m
+[36m@@ -59,5 +59,5 @@[m [mclass RenderBenchmarkTest {[m
+         return model;[m
+     }[m
+     private static long usedHeap() { Runtime runtime = Runtime.getRuntime(); return runtime.totalMemory() - runtime.freeMemory(); }[m
+[31m-    private static void forceGc() { System.gc(); System.runFinalization(); System.gc(); }[m
+[32m+[m[32m    private static void forceGc() { System.gc(); System.gc(); }[m
+ }[m
+[1mdiff --git a/tests/com/cgengine/render_engine/TextureSamplerTest.java b/tests/com/cgengine/render_engine/TextureSamplerTest.java[m
+[1mindex e3abf25..2ad7474 100644[m
+[1m--- a/tests/com/cgengine/render_engine/TextureSamplerTest.java[m
+[1m+++ b/tests/com/cgengine/render_engine/TextureSamplerTest.java[m
+[36m@@ -12,4 +12,13 @@[m [mclass TextureSamplerTest {[m
+  @Test void samplesKnown2x2TextureAndClampsUv(){Texture2D texture=new Texture2D(2,2,new int[]{0xFFFF0000,0xFF00FF00,0xFF0000FF,0xFFFFFFFF});assertEquals(0xFF0000FF,TextureSampler.sample(texture,0,0));assertEquals(0xFF00FF00,TextureSampler.sample(texture,1,1));assertEquals(0xFFFF0000,TextureSampler.sample(texture,-10,10));assertEquals(0xFFFFFFFF,TextureSampler.sample(texture,10,-10));}[m
+  @Test void rejectsInvalidImageData(){assertThrows(IllegalArgumentException.class,()->new Texture2D(0,1,new int[0]));}[m
+  @Test void textureIsUsedBeforeLightingAndMissingUvFallsBackToBaseColor(){Model model=new Model();model.vertices.addAll(List.of(new Vector3f(-.4f,-.3f,0),new Vector3f(.4f,-.3f,0),new Vector3f(0,.4f,0)));model.textureVertices.addAll(List.of(new Vector2f(0,0),new Vector2f(0,0),new Vector2f(0,0)));Polygon polygon=new Polygon();polygon.setVertexIndices(new ArrayList<>(List.of(0,1,2)));polygon.setTextureVertexIndices(new ArrayList<>(List.of(0,1,2)));polygon.setBaseColor(ColorRgb.RED);model.polygons.add(polygon);model.computeNormals();model.setTexture(new Texture2D(2,2,new int[]{0xFFFF0000,0xFF00FF00,0xFF0000FF,0xFFFFFFFF}));FrameBuffer frame=new FrameBuffer(80,80);Camera camera=new Camera(new Vector2f(0,(float)Math.PI/2),5,new Vector3f(0,0,0),1,1,.1f,10);RenderEngine.renderFrame(frame,camera,List.of(model));int textured=Light.CAMERA_DIRECTIONAL.shade(0xFF0000FF,new Vector3f(0,0,-1));assertEquals(textured,frame.colorAt(40,40));polygon.setTextureVertexIndices(new ArrayList<>());RenderEngine.renderFrame(frame,camera,List.of(model));assertEquals(Light.CAMERA_DIRECTIONAL.shade(ColorRgb.RED.argb(),new Vector3f(0,0,-1)),frame.colorAt(40,40));}[m
+[32m+[m[32m @Test void missingNormalsUseAmbientOnly() {[m
+[32m+[m[32m  Model model = com.cgengine.obj_io.reader.ObjReader.read("v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3");[m
+[32m+[m[32m  model.polygons.getFirst().setNormalIndices(new ArrayList<>());[m
+[32m+[m[32m  model.normals.clear();[m
+[32m+[m[32m  FrameBuffer frame = new FrameBuffer(64,64);[m
+[32m+[m[32m  Camera camera = new Camera(new Vector2f((float)Math.PI,(float)Math.PI/2),5,new Vector3f(0,0,0),1,1,.1f,10);[m
+[32m+[m[32m  RenderEngine.renderFrame(frame,camera,List.of(model));[m
+[32m+[m[32m  assertEquals(Light.CAMERA_DIRECTIONAL.shade(0xFFFFFFFF,new Vector3f(0,0,0)),frame.colorAt(32,32));[m
+[32m+[m[32m }[m
+ }[m
